@@ -127,16 +127,28 @@ public class GreedyUndirectedFeedbackVertexSetAlgorithm<V, E>
      */
     private class Algorithm
     {
+        // graph representation using integers
         private final SetToIntegerMapping<V> vertexToIntegerMapping;
         private final List<V> indexList;
         private final AdjacencyMatrix adj;
+
+        // number of vertices
         private final int n;
+        // whether a vertex still exists
         private final boolean[] exists;
+        // vertex degrees
         private final int[] degree;
+        // vertex weights
         private final double[] weight;
+
+        // heap
         private final AddressableHeap<Double, Integer> heap;
         private final AddressableHeap.Handle<Double, Integer>[] handle;
+
+        // scheduled for cleanup
         private final Deque<Integer> forRemoval;
+
+        // result
         private Set<V> resultSet;
         private double resultWeight;
 
@@ -194,6 +206,11 @@ public class GreedyUndirectedFeedbackVertexSetAlgorithm<V, E>
             }
         }
 
+        /**
+         * Execute the algorithm
+         * 
+         * @return the feedback vertex set
+         */
         public FeedbackVertexSet<V> solve()
         {
             cleanup();
@@ -208,6 +225,7 @@ public class GreedyUndirectedFeedbackVertexSetAlgorithm<V, E>
             // main loop
             while (!heap.isEmpty()) {
                 int v = heap.deleteMin().getValue();
+                handle[v] = null;
                 if (!exists[v]) {
                     continue;
                 }
