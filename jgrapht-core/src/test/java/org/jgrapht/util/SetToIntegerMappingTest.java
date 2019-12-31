@@ -24,33 +24,32 @@ import java.util.function.*;
 import java.util.stream.*;
 
 /**
- * Tests for {@link VertexToIntegerMapping}
+ * Tests for {@link SetToIntegerMapping}
  *
  * @author Alexandru Valeanu
  */
-public class VertexToIntegerMappingTest
+public class SetToIntegerMappingTest
 {
 
     @Test(expected = NullPointerException.class)
     public void testNullSet()
     {
-        VertexToIntegerMapping<Integer> mapping = new VertexToIntegerMapping<>((Set<Integer>) null);
+        new SetToIntegerMapping<>((Set<Integer>) null);
     }
 
     @Test
     public void testEmptySet()
     {
-        VertexToIntegerMapping<Integer> mapping = new VertexToIntegerMapping<>(new HashSet<>());
+        SetToIntegerMapping<Integer> mapping = new SetToIntegerMapping<>(new HashSet<>());
 
         Assert.assertTrue(mapping.getIndexList().isEmpty());
-        Assert.assertTrue(mapping.getVertexMap().isEmpty());
+        Assert.assertTrue(mapping.getElementMap().isEmpty());
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void testNotUniqueElements()
     {
-        VertexToIntegerMapping<Integer> mapping =
-            new VertexToIntegerMapping<>(Arrays.asList(1, 2, 1));
+        new SetToIntegerMapping<>(Arrays.asList(1, 2, 1));
     }
 
     @Test
@@ -65,9 +64,9 @@ public class VertexToIntegerMappingTest
 
             Set<String> vertices =
                 IntStream.range(0, N).mapToObj(x -> supplier.get()).collect(Collectors.toSet());
-            VertexToIntegerMapping<String> mapping = new VertexToIntegerMapping<>(vertices);
+            SetToIntegerMapping<String> mapping = new SetToIntegerMapping<>(vertices);
 
-            Map<String, Integer> vertexMap = mapping.getVertexMap();
+            Map<String, Integer> vertexMap = mapping.getElementMap();
             List<String> indexList = mapping.getIndexList();
 
             Assert.assertEquals(N, vertexMap.size());

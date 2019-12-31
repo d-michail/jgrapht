@@ -137,7 +137,7 @@ public class AsSubgraph<V, E>
 
     /**
      * Creates a new induced subgraph. The subgraph will keep track of edges being added to its
-     * vertex subset as well as deletion of edges and vertices. If base it not listenable, this is
+     * vertex subset as well as deletion of edges and vertices. If base is not listenable, this is
      * identical to the call Subgraph(base, vertexSubset, null).
      *
      * @param base the base (backing) graph on which the subgraph will be based.

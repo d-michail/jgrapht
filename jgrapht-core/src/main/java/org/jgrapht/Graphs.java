@@ -589,9 +589,29 @@ public abstract class Graphs
      * @return the mapping as an object containing the {@code vertexMap} and the {@code indexList}
      *
      * @see VertexToIntegerMapping
+     * @deprecated Use {@link #getVertexSetToIntegerMapping(Graph)} instead.
      */
+    @Deprecated
     public static <V, E> VertexToIntegerMapping<V> getVertexToIntegerMapping(Graph<V, E> graph)
     {
         return new VertexToIntegerMapping<>(Objects.requireNonNull(graph).vertexSet());
+    }
+
+    /**
+     * Compute a new mapping from the vertices of a graph to the integer range $[0, n)$ where $n$ is
+     * the number of vertices in the graph.
+     *
+     * @param graph the input graph
+     * @param <V> the graph vertex type
+     * @param <E> the graph edge type
+     * @throws NullPointerException if {@code graph} is {@code null}
+     *
+     * @return the mapping as an object containing the {@code elementMap} and the {@code indexList}
+     *
+     * @see SetToIntegerMapping
+     */
+    public static <V, E> SetToIntegerMapping<V> getVertexSetToIntegerMapping(Graph<V, E> graph)
+    {
+        return new SetToIntegerMapping<>(Objects.requireNonNull(graph).vertexSet());
     }
 }

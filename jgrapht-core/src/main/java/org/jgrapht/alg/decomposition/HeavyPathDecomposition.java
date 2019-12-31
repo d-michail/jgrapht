@@ -138,8 +138,8 @@ public class HeavyPathDecomposition<V, E>
         /*
          * Normalize the graph by mapping each vertex to an integer.
          */
-        VertexToIntegerMapping<V> vertexToIntegerMapping = Graphs.getVertexToIntegerMapping(graph);
-        vertexMap = vertexToIntegerMapping.getVertexMap();
+        SetToIntegerMapping<V> vertexToIntegerMapping = Graphs.getVertexSetToIntegerMapping(graph);
+        vertexMap = vertexToIntegerMapping.getElementMap();
         indexList = vertexToIntegerMapping.getIndexList();
     }
 

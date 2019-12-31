@@ -124,8 +124,8 @@ public class EulerTourRMQLCAFinder<V, E>
 
     private void normalizeGraph()
     {
-        VertexToIntegerMapping<V> vertexToIntegerMapping = Graphs.getVertexToIntegerMapping(graph);
-        vertexMap = vertexToIntegerMapping.getVertexMap();
+        SetToIntegerMapping<V> vertexToIntegerMapping = Graphs.getVertexSetToIntegerMapping(graph);
+        vertexMap = vertexToIntegerMapping.getElementMap();
         indexList = vertexToIntegerMapping.getIndexList();
     }
 

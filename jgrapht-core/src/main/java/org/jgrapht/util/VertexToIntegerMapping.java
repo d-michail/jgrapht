@@ -30,7 +30,9 @@ import java.util.*;
  * @author Alexandru Valeanu
  *
  * @param <V> the graph vertex type
+ * @deprecated Use {@link SetToIntegerMapping} instead.
  */
+@Deprecated
 public class VertexToIntegerMapping<V>
 {
 
@@ -114,7 +116,7 @@ public class VertexToIntegerMapping<V>
      */
     public Map<V, Integer> getVertexMap()
     {
-        return vertexMap;
+        return Collections.unmodifiableMap(vertexMap);
     }
 
     /**
@@ -125,6 +127,6 @@ public class VertexToIntegerMapping<V>
      */
     public List<V> getIndexList()
     {
-        return indexList;
+        return Collections.unmodifiableList(indexList);
     }
 }

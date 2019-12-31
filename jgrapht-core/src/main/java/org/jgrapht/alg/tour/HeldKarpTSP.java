@@ -130,8 +130,8 @@ public class HeldKarpTSP<V, E>
         /*
          * Normalize the graph by mapping each vertex to an integer.
          */
-        VertexToIntegerMapping<V> vertexToIntegerMapping = Graphs.getVertexToIntegerMapping(graph);
-        Map<V, Integer> vertexMap = vertexToIntegerMapping.getVertexMap();
+        SetToIntegerMapping<V> vertexToIntegerMapping = Graphs.getVertexSetToIntegerMapping(graph);
+        Map<V, Integer> vertexMap = vertexToIntegerMapping.getElementMap();
         List<V> indexList = vertexToIntegerMapping.getIndexList();
 
         for (E e : graph.edgeSet()) {

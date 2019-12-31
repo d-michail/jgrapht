@@ -18,7 +18,6 @@
 package org.jgrapht.alg.interfaces;
 
 import java.util.Set;
-import java.util.function.Function;
 
 import org.jgrapht.util.WeightedUnmodifiableSet;
 
@@ -39,28 +38,16 @@ import org.jgrapht.util.WeightedUnmodifiableSet;
 public interface FeedbackVertexSetAlgorithm<V>
 {
     /**
-     * Compute a weighted feedback vertex set.
-     *
-     * @param vertexWeights function for the vertex weights
-     * @return a feedback vertex set
-     */
-    FeedbackVertexSet<V> getFeedbackVertexSet(Function<V, Double> vertexWeights);
-
-    /**
-     * Compute a feedback vertex set.
+     * Compute a (weighted) feedback vertex set.
      *
      * @return a feedback vertex set
      */
-    default FeedbackVertexSet<V> getFeedbackVertexSet()
-    {
-        return getFeedbackVertexSet(v -> 1.0);
-    }
+    FeedbackVertexSet<V> getFeedbackVertexSet();
 
     /**
      * A feedback vertex set
      *
      * @param <V> the graph vertex type
-     * @param <E> the graph edge type
      */
     interface FeedbackVertexSet<V>
         extends
