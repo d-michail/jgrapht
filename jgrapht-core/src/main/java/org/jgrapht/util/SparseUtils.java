@@ -142,7 +142,9 @@ public class SparseUtils
      * majority of algorithms on graphs require either the outgoing or the incoming edges, but not
      * both. If this is not the case, an adjacency matrix which uses the incoming edges can be
      * easily constructed by calling this method using the {@link EdgeReversedGraph} view.
-     * 
+     *
+     * @param <V> the graph vertex type
+     * @param <E> the graph edge type
      * @param graph the input graph
      * @return a sparse adjacency matrix representation
      */
@@ -168,6 +170,8 @@ public class SparseUtils
      * both. If this is not the case, an adjacency matrix which uses the incoming edges can be
      * easily constructed by calling this method using the {@link EdgeReversedGraph} view.
      * 
+     * @param <V> the graph vertex type
+     * @param <E> the graph edge type
      * @param graph the input graph
      * @param vertexToIntegerMapping the vertex to integer mapping to use
      * @return a sparse adjacency matrix representation
@@ -234,6 +238,8 @@ public class SparseUtils
      * both. If this is not the case, an incidence matrix which uses the incoming edges can be
      * easily constructed by calling this method using the {@link EdgeReversedGraph} view.
      * 
+     * @param <V> the graph vertex type
+     * @param <E> the graph edge type
      * @param graph the input graph
      * @return a sparse incidence matrix representation
      */
@@ -256,6 +262,8 @@ public class SparseUtils
      * both. If this is not the case, an incidence matrix which uses the incoming edges can be
      * easily constructed by calling this method using the {@link EdgeReversedGraph} view.
      * 
+     * @param <V> the graph vertex type
+     * @param <E> the graph edge type
      * @param graph the input graph
      * @param vertexToIntegerMapping the vertex to integer mapping
      * @param edgeToIntegerMapping the edge to integer mapping
