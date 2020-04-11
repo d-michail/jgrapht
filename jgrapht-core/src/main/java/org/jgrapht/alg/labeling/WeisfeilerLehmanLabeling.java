@@ -317,10 +317,13 @@ public class WeisfeilerLehmanLabeling<V, E>
             Integer count = labelCounts.get(label);
             if (count == null || count <= 0) {
                 return false;
+            } else if (count == 1) { 
+                labelCounts.remove(label);
+            } else { 
+                labelCounts.put(label, count - 1);    
             }
-            labelCounts.put(label, count - 1);
         }
-        return true;
+        return labelCounts.isEmpty();
     }
 
 }

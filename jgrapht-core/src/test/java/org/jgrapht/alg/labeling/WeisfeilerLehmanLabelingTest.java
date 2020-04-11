@@ -21,11 +21,13 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 
 import org.jgrapht.Graph;
 import org.jgrapht.alg.interfaces.VertexLabelingAlgorithm.Labeling;
+import org.jgrapht.alg.interfaces.VertexLabelingAlgorithm.LabelingImpl;
 import org.jgrapht.generate.GridGraphGenerator;
 import org.jgrapht.generate.RingGraphGenerator;
 import org.jgrapht.graph.DefaultEdge;
@@ -278,6 +280,33 @@ public class WeisfeilerLehmanLabelingTest
             it.next().toString());
         assertFalse(it.hasNext());
 
+    }
+    
+    @Test
+    public void testSameLabeling()
+    {
+        Map<Integer, String> h1 = new HashMap<>();
+        Map<Integer, String> h2 = new HashMap<>();
+        assertTrue(WeisfeilerLehmanLabeling.isTheSameLabeling(new LabelingImpl<Integer>(h1), new LabelingImpl<Integer>(h2)));
+        
+        h1.put(1, "1");
+        h1.put(2, "1");
+        h1.put(3, "2");
+        h1.put(4, "2");
+        h1.put(5, "2");
+        
+        h2.put(5, "1");
+        h2.put(3, "2");
+        h2.put(2, "2");
+        h2.put(1, "2");
+        
+        assertFalse(WeisfeilerLehmanLabeling.isTheSameLabeling(new LabelingImpl<Integer>(h1), new LabelingImpl<Integer>(h2)));
+        
+        h2.put(4, "1");
+        assertTrue(WeisfeilerLehmanLabeling.isTheSameLabeling(new LabelingImpl<Integer>(h1), new LabelingImpl<Integer>(h2)));
+        
+        h2.put(6, "3");
+        assertFalse(WeisfeilerLehmanLabeling.isTheSameLabeling(new LabelingImpl<Integer>(h1), new LabelingImpl<Integer>(h2)));
     }
 
 }
