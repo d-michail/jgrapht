@@ -17,12 +17,20 @@
  */
 package org.jgrapht.opt.graph.sparse;
 
-import org.jgrapht.*;
-import org.jgrapht.alg.util.*;
-import org.jgrapht.graph.*;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.function.Supplier;
 
-import java.util.*;
-import java.util.function.*;
+import org.jgrapht.Graph;
+import org.jgrapht.GraphType;
+import org.jgrapht.alg.util.Pair;
+import org.jgrapht.graph.AbstractGraph;
+import org.jgrapht.graph.DefaultGraphType;
+
+import com.google.common.graph.EndpointPair;
 
 /**
  * Sparse undirected graph.
@@ -30,14 +38,14 @@ import java.util.function.*;
  * <p>
  * Assuming the graph has $n$ vertices, the vertices are numbered from $0$ to $n-1$. Similarly,
  * edges are numbered from $0$ to $m-1$ where $m$ is the total number of edges.
- * 
+ *
  * <p>
  * It stores the boolean incidence matrix of the graph (rows are vertices and columns are edges) as
  * Compressed Sparse Rows (CSR). In order to also support constant time source and target lookups
  * from an edge identifier we also store the transposed of the incidence matrix again in compressed
  * sparse rows format. This is a classic format for write-once read-many use cases. Thus, the graph
  * is unmodifiable.
- * 
+ *
  *
  * <p>
  * The question of whether a sparse or dense representation is more appropriate is highly dependent
@@ -49,10 +57,10 @@ import java.util.function.*;
  * for Automatic Computation, J. H. Wilkinson and C. Reinsch, Eds. Vol. 2. Springer-Verlag, Berlin,
  * New York.</li>
  * </ul>
- * 
+ *
  * Additional information about sparse representations can be found in the
  * <a href="https://en.wikipedia.org/wiki/Sparse_matrix">wikipedia</a>.
- * 
+ *
  * @author Dimitrios Michail
  */
 public class SparseIntUndirectedGraph
@@ -66,26 +74,25 @@ public class SparseIntUndirectedGraph
 
     /**
      * Create a new graph from an edge list
-     * 
+     *
      * @param numVertices number of vertices
      * @param edges edge list
      */
-    public SparseIntUndirectedGraph(int numVertices, List<Pair<Integer, Integer>> edges)
+	public SparseIntUndirectedGraph(final int numVertices, final int m, final Iterable<EndpointPair<Integer>> edges)
     {
-        final int m = edges.size();
-        List<Pair<Integer, Integer>> nonZeros = new ArrayList<>(m);
-        List<Pair<Integer, Integer>> nonZerosTranspose = new ArrayList<>(m);
+        final List<Pair<Integer, Integer>> nonZeros = new ArrayList<>(m);
+        final List<Pair<Integer, Integer>> nonZerosTranspose = new ArrayList<>(m);
 
         int eIndex = 0;
-        for (Pair<Integer, Integer> e : edges) {
-            nonZeros.add(Pair.of(e.getFirst(), eIndex));
-            nonZerosTranspose.add(Pair.of(eIndex, e.getFirst()));
-            nonZeros.add(Pair.of(e.getSecond(), eIndex));
-            nonZerosTranspose.add(Pair.of(eIndex, e.getSecond()));
+		for (final EndpointPair<Integer> e : edges) {
+			nonZeros.add(Pair.of(e.nodeU(), eIndex));
+			nonZerosTranspose.add(Pair.of(eIndex, e.nodeU()));
+			nonZeros.add(Pair.of(e.nodeV(), eIndex));
+			nonZerosTranspose.add(Pair.of(eIndex, e.nodeV()));
             eIndex++;
         }
         incidenceMatrix = new CSRBooleanMatrix(numVertices, m, nonZeros);
-        incidenceMatrixT = new CSRBooleanMatrix(edges.size(), numVertices, nonZerosTranspose);
+		incidenceMatrixT = new CSRBooleanMatrix(m, numVertices, nonZerosTranspose);
     }
 
     @Override
@@ -101,13 +108,13 @@ public class SparseIntUndirectedGraph
     }
 
     @Override
-    public Integer addEdge(Integer sourceVertex, Integer targetVertex)
+    public Integer addEdge(final Integer sourceVertex, final Integer targetVertex)
     {
         throw new UnsupportedOperationException(UNMODIFIABLE);
     }
 
     @Override
-    public boolean addEdge(Integer sourceVertex, Integer targetVertex, Integer e)
+    public boolean addEdge(final Integer sourceVertex, final Integer targetVertex, final Integer e)
     {
         throw new UnsupportedOperationException(UNMODIFIABLE);
     }
@@ -119,19 +126,19 @@ public class SparseIntUndirectedGraph
     }
 
     @Override
-    public boolean addVertex(Integer v)
+    public boolean addVertex(final Integer v)
     {
         throw new UnsupportedOperationException(UNMODIFIABLE);
     }
 
     @Override
-    public boolean containsEdge(Integer e)
+    public boolean containsEdge(final Integer e)
     {
         return e >= 0 && e < incidenceMatrix.columns();
     }
 
     @Override
-    public boolean containsVertex(Integer v)
+    public boolean containsVertex(final Integer v)
     {
         return v >= 0 && v < incidenceMatrix.rows();
     }
@@ -143,61 +150,61 @@ public class SparseIntUndirectedGraph
     }
 
     @Override
-    public int degreeOf(Integer vertex)
+    public int degreeOf(final Integer vertex)
     {
         assertVertexExist(vertex);
         return incidenceMatrix.nonZeros(vertex);
     }
 
     @Override
-    public Set<Integer> edgesOf(Integer vertex)
+    public Set<Integer> edgesOf(final Integer vertex)
     {
         assertVertexExist(vertex);
         return incidenceMatrix.nonZerosSet(vertex);
     }
 
     @Override
-    public int inDegreeOf(Integer vertex)
+    public int inDegreeOf(final Integer vertex)
     {
         assertVertexExist(vertex);
         return incidenceMatrix.nonZeros(vertex);
     }
 
     @Override
-    public Set<Integer> incomingEdgesOf(Integer vertex)
+    public Set<Integer> incomingEdgesOf(final Integer vertex)
     {
         assertVertexExist(vertex);
         return incidenceMatrix.nonZerosSet(vertex);
     }
 
     @Override
-    public int outDegreeOf(Integer vertex)
+    public int outDegreeOf(final Integer vertex)
     {
         assertVertexExist(vertex);
         return incidenceMatrix.nonZeros(vertex);
     }
 
     @Override
-    public Set<Integer> outgoingEdgesOf(Integer vertex)
+    public Set<Integer> outgoingEdgesOf(final Integer vertex)
     {
         assertVertexExist(vertex);
         return incidenceMatrix.nonZerosSet(vertex);
     }
 
     @Override
-    public Integer removeEdge(Integer sourceVertex, Integer targetVertex)
+    public Integer removeEdge(final Integer sourceVertex, final Integer targetVertex)
     {
         throw new UnsupportedOperationException(UNMODIFIABLE);
     }
 
     @Override
-    public boolean removeEdge(Integer e)
+    public boolean removeEdge(final Integer e)
     {
         throw new UnsupportedOperationException(UNMODIFIABLE);
     }
 
     @Override
-    public boolean removeVertex(Integer v)
+    public boolean removeVertex(final Integer v)
     {
         throw new UnsupportedOperationException(UNMODIFIABLE);
     }
@@ -217,40 +224,40 @@ public class SparseIntUndirectedGraph
     }
 
     @Override
-    public double getEdgeWeight(Integer e)
+    public double getEdgeWeight(final Integer e)
     {
         return Graph.DEFAULT_EDGE_WEIGHT;
     }
 
     @Override
-    public void setEdgeWeight(Integer e, double weight)
+    public void setEdgeWeight(final Integer e, final double weight)
     {
         throw new UnsupportedOperationException(UNMODIFIABLE);
     }
 
     @Override
-    public Integer getEdgeSource(Integer e)
+    public Integer getEdgeSource(final Integer e)
     {
         assertEdgeExist(e);
         return incidenceMatrixT.nonZerosPositionIterator(e).next();
     }
 
     @Override
-    public Integer getEdgeTarget(Integer e)
+    public Integer getEdgeTarget(final Integer e)
     {
         assertEdgeExist(e);
-        Iterator<Integer> it = incidenceMatrixT.nonZerosPositionIterator(e);
+        final Iterator<Integer> it = incidenceMatrixT.nonZerosPositionIterator(e);
         it.next();
         return it.next();
     }
 
     /**
      * {@inheritDoc}
-     * 
+     *
      * This operation costs $O(d)$ where $d$ is the degree of the source vertex.
      */
     @Override
-    public Integer getEdge(Integer sourceVertex, Integer targetVertex)
+    public Integer getEdge(final Integer sourceVertex, final Integer targetVertex)
     {
         if (sourceVertex < 0 || sourceVertex >= incidenceMatrix.rows()) {
             return null;
@@ -259,12 +266,12 @@ public class SparseIntUndirectedGraph
             return null;
         }
 
-        Iterator<Integer> it = incidenceMatrix.nonZerosPositionIterator(sourceVertex);
+        final Iterator<Integer> it = incidenceMatrix.nonZerosPositionIterator(sourceVertex);
         while (it.hasNext()) {
-            int eId = it.next();
+            final int eId = it.next();
 
-            int v = getEdgeSource(eId);
-            int u = getEdgeTarget(eId);
+            final int v = getEdgeSource(eId);
+            final int u = getEdgeTarget(eId);
 
             if (v == sourceVertex && u == targetVertex || v == targetVertex && u == sourceVertex) {
                 return eId;
@@ -275,11 +282,11 @@ public class SparseIntUndirectedGraph
 
     /**
      * {@inheritDoc}
-     * 
+     *
      * This operation costs $O(d)$ where $d$ is the degree of the source vertex.
      */
     @Override
-    public Set<Integer> getAllEdges(Integer sourceVertex, Integer targetVertex)
+    public Set<Integer> getAllEdges(final Integer sourceVertex, final Integer targetVertex)
     {
         if (sourceVertex < 0 || sourceVertex >= incidenceMatrix.rows()) {
             return null;
@@ -288,13 +295,13 @@ public class SparseIntUndirectedGraph
             return null;
         }
 
-        Set<Integer> result = new LinkedHashSet<>();
-        Iterator<Integer> it = incidenceMatrix.nonZerosPositionIterator(sourceVertex);
+        final Set<Integer> result = new LinkedHashSet<>();
+        final Iterator<Integer> it = incidenceMatrix.nonZerosPositionIterator(sourceVertex);
         while (it.hasNext()) {
-            int eId = it.next();
+            final int eId = it.next();
 
-            int v = getEdgeSource(eId);
-            int u = getEdgeTarget(eId);
+            final int v = getEdgeSource(eId);
+            final int u = getEdgeTarget(eId);
 
             if (v == sourceVertex && u == targetVertex || v == targetVertex && u == sourceVertex) {
                 result.add(eId);
@@ -310,7 +317,8 @@ public class SparseIntUndirectedGraph
      * @return <code>true</code> if this assertion holds.
      * @throws IllegalArgumentException if specified vertex does not exist in this graph.
      */
-    protected boolean assertVertexExist(Integer v)
+    @Override
+	protected boolean assertVertexExist(final Integer v)
     {
         if (v >= 0 && v < incidenceMatrix.rows()) {
             return true;
@@ -326,7 +334,7 @@ public class SparseIntUndirectedGraph
      * @return <code>true</code> if this assertion holds.
      * @throws IllegalArgumentException if specified edge does not exist in this graph.
      */
-    protected boolean assertEdgeExist(Integer e)
+    protected boolean assertEdgeExist(final Integer e)
     {
         if (e >= 0 && e < incidenceMatrix.columns()) {
             return true;
