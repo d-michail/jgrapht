@@ -133,11 +133,10 @@ public class SuccinctIntDirectedGraph extends AbstractGraph<Integer, Integer> im
 
 
     /**
-     * Create a new graph from an edge list.
-     *
-     * @param numVertices the number of vertices
-     * @param edges the edge list
-     */
+	 * Create a new graph from a given graph.
+	 *
+	 * @param graph a directed graph.
+	 */
 	public <E> SuccinctIntDirectedGraph(final Graph<Integer, E> graph)
     {
 		if (graph.getType().isUndirected()) throw new IllegalArgumentException("This class supports directed graphs only");
@@ -218,7 +217,7 @@ public class SuccinctIntDirectedGraph extends AbstractGraph<Integer, Integer> im
     }
 
     @Override
-    public int degreeOf(final Integer vertex)
+	public int degreeOf(final Integer vertex)
     {
 		return inDegreeOf(vertex) + outDegreeOf(vertex);
 	}
@@ -359,11 +358,6 @@ public class SuccinctIntDirectedGraph extends AbstractGraph<Integer, Integer> im
 		return successors.successor(v) == v && successors.index() <= result[1];
 	}
 
-    /**
-     * {@inheritDoc}
-     *
-     * This operation costs $O(d)$ where $d$ is the out-degree of the source vertex.
-     */
     @Override
     public Set<Integer> getAllEdges(final Integer sourceVertex, final Integer targetVertex)
     {
@@ -407,11 +401,6 @@ public class SuccinctIntDirectedGraph extends AbstractGraph<Integer, Integer> im
 		@Override
 		public long edgeCount() {
 			return m;
-		}
-
-		@Override
-		public Iterable<Integer> edges() {
-			return edgeSet();
 		}
 
 		@Override
