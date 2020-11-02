@@ -252,14 +252,10 @@ public class SuccinctIntDirectedGraph extends AbstractGraph<Integer, Integer> im
 
 		final IntOpenHashSet s = new IntOpenHashSet();
 		final long base = pred[0] + 1;
-		for(int i = 0; i < d; i++) {
-			final long y = pred[i + 1] - base;
-			final long pos = cumulativeOutdegrees.getLong(y);
-			int e;
-			final long lowerBound = successors.getLong(pos) + vertex + 1;
-			final long successor = successors.successor(lowerBound);
-			e = (int)successors.index() - 1;
-			assert getEdgeSource(e).longValue() == y;
+		for (int i = 1; i <= d; i++) {
+			successors.successor(successors.getLong(cumulativeOutdegrees.getLong(pred[i] - base)) + vertex + 1);
+			final int e = (int)successors.index() - 1;
+			assert getEdgeSource(e).longValue() == pred[i] - base;
 			assert getEdgeTarget(e).longValue() == vertex;
 			s.add(e);
 		}
@@ -351,8 +347,7 @@ public class SuccinctIntDirectedGraph extends AbstractGraph<Integer, Integer> im
     {
 		final long[] result = new long[2];
 		cumulativeOutdegrees.get(sourceVertex, result);
-		final long base = successors.getLong(result[0]);
-		final long v = base + targetVertex + 1;
+		final long v = successors.getLong(result[0]) + targetVertex + 1;
 		return successors.successor(v) == v && successors.index() <= result[1] ? (int)successors.index() - 1 : null;
     }
 
@@ -360,8 +355,7 @@ public class SuccinctIntDirectedGraph extends AbstractGraph<Integer, Integer> im
 	public boolean containsEdge(final Integer sourceVertex, final Integer targetVertex) {
 		final long[] result = new long[2];
 		cumulativeOutdegrees.get(sourceVertex, result);
-		final long base = successors.getLong(result[0]);
-		final long v = base + targetVertex + 1;
+		final long v = successors.getLong(result[0]) + targetVertex + 1;
 		return successors.successor(v) == v && successors.index() <= result[1];
 	}
 
@@ -422,6 +416,7 @@ public class SuccinctIntDirectedGraph extends AbstractGraph<Integer, Integer> im
 
 		@Override
 		public Iterable<Integer> edgesOf(final Integer source) {
+			// TODO: eliminate duplicate loop
 			return Iterables.concat(outgoingEdgesOf(source), incomingEdgesOf(source));
 		}
 
@@ -436,21 +431,18 @@ public class SuccinctIntDirectedGraph extends AbstractGraph<Integer, Integer> im
 
 			final long base = pred[0] + 1;
 			return () -> new IntIterator() {
-				int i = 0;
+				int i = 1;
 
 				@Override
 				public boolean hasNext() {
-					return i < d;
+					return i <= d;
 				}
 
 				@Override
 				public int nextInt() {
-					final long y = pred[i + 1] - base;
-					final long pos = cumulativeOutdegrees.getLong(y);
-					final long lowerBound = successors.getLong(pos) + vertex + 1;
-					final long successor = successors.successor(lowerBound);
+					successors.successor(successors.getLong(cumulativeOutdegrees.getLong(pred[i] - base)) + vertex + 1);
 					final int e = (int)successors.index() - 1;
-					assert getEdgeSource(e).longValue() == y;
+					assert getEdgeSource(e).longValue() == pred[i] - base;
 					assert getEdgeTarget(e).longValue() == vertex;
 					i++;
 					return e;

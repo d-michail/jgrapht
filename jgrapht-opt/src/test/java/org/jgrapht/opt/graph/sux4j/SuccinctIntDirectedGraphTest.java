@@ -31,7 +31,7 @@ import org.jgrapht.util.SupplierUtil;
 import org.junit.Test;
 
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
-import it.unimi.dsi.util.Interval;
+import it.unimi.dsi.fastutil.ints.IntSets;
 import it.unimi.dsi.util.XoRoShiRo128PlusPlusRandomGenerator;
 
 public class SuccinctIntDirectedGraphTest
@@ -124,17 +124,28 @@ public class SuccinctIntDirectedGraphTest
 		assertFalse(s.containsEdge(4, 2));
 		assertFalse(s.containsEdge(4, 3));
 
-		assertEquals(Interval.valueOf(0, 1), s.outgoingEdgesOf(0));
-		assertEquals(Interval.valueOf(2, 2), s.outgoingEdgesOf(1));
-		assertEquals(Interval.valueOf(3, 4), s.outgoingEdgesOf(2));
-		assertEquals(Interval.valueOf(5, 7), s.outgoingEdgesOf(3));
-		assertEquals(Interval.valueOf(8, 8), s.outgoingEdgesOf(4));
+		assertEquals(IntSets.fromTo(0, 2), s.outgoingEdgesOf(0));
+		assertEquals(IntSets.fromTo(2, 3), s.outgoingEdgesOf(1));
+		assertEquals(IntSets.fromTo(3, 5), s.outgoingEdgesOf(2));
+		assertEquals(IntSets.fromTo(5, 8), s.outgoingEdgesOf(3));
+		assertEquals(IntSets.fromTo(8, 9), s.outgoingEdgesOf(4));
 
 		assertEquals(new IntOpenHashSet(new int[] { 5 }), s.incomingEdgesOf(0));
 		assertEquals(new IntOpenHashSet(new int[] { 0, 3, 8 }), s.incomingEdgesOf(1));
 		assertEquals(new IntOpenHashSet(new int[] { 1, 2 }), s.incomingEdgesOf(2));
 		assertEquals(new IntOpenHashSet(new int[] { 4, 6 }), s.incomingEdgesOf(3));
 		assertEquals(new IntOpenHashSet(new int[] { 7 }), s.incomingEdgesOf(4));
+
+		assertEquals(new IntOpenHashSet(new int[] {
+				5 }), new IntOpenHashSet(s.iterables().incomingEdgesOf(0).iterator()));
+		assertEquals(new IntOpenHashSet(new int[] { 0, 3,
+				8 }), new IntOpenHashSet(s.iterables().incomingEdgesOf(1).iterator()));
+		assertEquals(new IntOpenHashSet(new int[] { 1,
+				2 }), new IntOpenHashSet(s.iterables().incomingEdgesOf(2).iterator()));
+		assertEquals(new IntOpenHashSet(new int[] { 4,
+				6 }), new IntOpenHashSet(s.iterables().incomingEdgesOf(3).iterator()));
+		assertEquals(new IntOpenHashSet(new int[] {
+				7 }), new IntOpenHashSet(s.iterables().incomingEdgesOf(4).iterator()));
 
 		assertEquals(0, s.getEdgeSource(0).intValue());
 		assertEquals(1, s.getEdgeTarget(0).intValue());
