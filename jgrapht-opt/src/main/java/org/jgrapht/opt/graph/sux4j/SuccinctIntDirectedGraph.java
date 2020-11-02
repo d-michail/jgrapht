@@ -54,14 +54,16 @@ public class SuccinctIntDirectedGraph extends AbstractGraph<Integer, Integer> im
 	private static final long serialVersionUID = 0L;
 	protected static final String UNMODIFIABLE = "this graph is unmodifiable";
 
-	private final class CumulativeSuccessors<E> implements LongIterator {
+	private final static class CumulativeSuccessors<E> implements LongIterator {
 		private final Graph<Integer, E> graph;
 		int x = -1;
 		long next = 0, last, cumul = 0;
-		Iterator<E> successors= ObjectIterators.emptyIterator();
+		Iterator<E> successors = ObjectIterators.emptyIterator();
 		private final Function<Integer, Iterable<E>> succ;
+		private final int n;
 
-		private CumulativeSuccessors(final Graph<Integer, E> graph, final Function<Integer, Iterable<E>> succ) {
+		public CumulativeSuccessors(final Graph<Integer, E> graph, final Function<Integer, Iterable<E>> succ) {
+			this.n = (int)graph.iterables().vertexCount();
 			this.graph = graph;
 			this.succ = succ;
 		}
@@ -70,7 +72,7 @@ public class SuccinctIntDirectedGraph extends AbstractGraph<Integer, Integer> im
 		public boolean hasNext() {
 			if (next != -1) return true;
 			if (x == n) return false;
-			while(! successors.hasNext()) {
+			while (!successors.hasNext()) {
 				cumul += last;
 				last = 0;
 				if (++x == n) return false;
@@ -89,14 +91,13 @@ public class SuccinctIntDirectedGraph extends AbstractGraph<Integer, Integer> im
 		}
 	}
 
-
-	private final class CumulativeDegrees implements LongIterator {
+	private final static class CumulativeDegrees implements LongIterator {
 		private final Function<Integer, Integer> degreeOf;
 		private final int n;
 		private int i = -1;
 		private long cumul = 0;
 
-		private CumulativeDegrees(final int n, final Function<Integer, Integer> degreeOf) {
+		public CumulativeDegrees(final int n, final Function<Integer, Integer> degreeOf) {
 			this.n = n;
 			this.degreeOf = degreeOf;
 		}
@@ -114,6 +115,18 @@ public class SuccinctIntDirectedGraph extends AbstractGraph<Integer, Integer> im
 		}
 	}
 
+	/** The number of vertices in the graph. */
+	private final int n;
+	/** The number of egdges in the graph. */
+	private final int m;
+	/** The cumulative list of outdegrees. */
+	private final EliasFanoIndexedMonotoneLongBigList cumulativeOutdegrees;
+	/** The cumulative list of indegrees. */
+	private final EliasFanoIndexedMonotoneLongBigList cumulativeIndegrees;
+	/** The cumulative list of successor lists. */
+	private final EliasFanoIndexedMonotoneLongBigList successors;
+	/** The cumulative list of predecessor lists. */
+	private final EliasFanoIndexedMonotoneLongBigList predecessors;
 
 	protected SuccinctIntDirectedGraph(final int n, final int m, final EliasFanoIndexedMonotoneLongBigList cumulativeOutdegrees, final EliasFanoIndexedMonotoneLongBigList cumulativeIndegrees, final EliasFanoIndexedMonotoneLongBigList successors, final EliasFanoIndexedMonotoneLongBigList predecessors) {
 		this.cumulativeOutdegrees = cumulativeOutdegrees;
@@ -124,21 +137,14 @@ public class SuccinctIntDirectedGraph extends AbstractGraph<Integer, Integer> im
 		this.m = m;
 	}
 
-	private final EliasFanoIndexedMonotoneLongBigList cumulativeOutdegrees;
-	private final EliasFanoIndexedMonotoneLongBigList cumulativeIndegrees;
-	private final EliasFanoIndexedMonotoneLongBigList successors;
-	private final EliasFanoIndexedMonotoneLongBigList predecessors;
-	private final int n;
-	private final int m;
-
-
     /**
-	 * Create a new graph from a given graph.
+	 * Create a new succinct directed graph from a given graph.
 	 *
 	 * @param graph a directed graph.
 	 */
 	public <E> SuccinctIntDirectedGraph(final Graph<Integer, E> graph)
     {
+
 		if (graph.getType().isUndirected()) throw new IllegalArgumentException("This class supports directed graphs only");
 		final GraphIterables<Integer, E> iterables = graph.iterables();
 		n = (int)iterables.vertexCount();
@@ -392,15 +398,22 @@ public class SuccinctIntDirectedGraph extends AbstractGraph<Integer, Integer> im
 
     }
 
-	private final GraphIterables<Integer, Integer> ITERABLES = new DefaultGraphIterables<>(this) {
+	private final static class DefaultGraphIterablesExtension extends DefaultGraphIterables<Integer, Integer> implements Serializable {
+		private static final long serialVersionUID = 0L;
+		private final SuccinctIntDirectedGraph graph;
+		private DefaultGraphIterablesExtension(final SuccinctIntDirectedGraph graph) {
+			super(graph);
+			this.graph = graph;
+		}
+
 		@Override
 		public long vertexCount() {
-			return n;
+			return graph.n;
 		}
 
 		@Override
 		public long edgeCount() {
-			return m;
+			return graph.m;
 		}
 
 		@Override
@@ -411,12 +424,13 @@ public class SuccinctIntDirectedGraph extends AbstractGraph<Integer, Integer> im
 
 		@Override
 		public Iterable<Integer> incomingEdgesOf(final Integer vertex) {
-			assertVertexExist(vertex);
+			final SuccinctIntDirectedGraph graph = this.graph;
+			graph.assertVertexExist(vertex);
 			final long[] result = new long[2];
-			cumulativeIndegrees.get(vertex, result);
+			graph.cumulativeIndegrees.get(vertex, result);
 			final int d = (int)(result[1] - result[0]);
 			final long pred[] = new long[d + 1];
-			predecessors.get(result[0], pred, 0, d + 1);
+			graph.predecessors.get(result[0], pred, 0, d + 1);
 
 			final long base = pred[0] + 1;
 			return () -> new IntIterator() {
@@ -429,16 +443,19 @@ public class SuccinctIntDirectedGraph extends AbstractGraph<Integer, Integer> im
 
 				@Override
 				public int nextInt() {
-					successors.successor(successors.getLong(cumulativeOutdegrees.getLong(pred[i] - base)) + vertex + 1);
+					final EliasFanoIndexedMonotoneLongBigList successors = graph.successors;
+					successors.successor(successors.getLong(graph.cumulativeOutdegrees.getLong(pred[i] - base)) + vertex + 1);
 					final int e = (int)successors.index() - 1;
-					assert getEdgeSource(e).longValue() == pred[i] - base;
-					assert getEdgeTarget(e).longValue() == vertex;
+					assert graph.getEdgeSource(e).longValue() == pred[i] - base;
+					assert graph.getEdgeTarget(e).longValue() == vertex;
 					i++;
 					return e;
 				}
 			};
 		}
-	};
+	}
+
+	private final GraphIterables<Integer, Integer> ITERABLES = new DefaultGraphIterablesExtension(this);
 
 	@Override
 	public GraphIterables<Integer, Integer> iterables() {
