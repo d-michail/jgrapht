@@ -43,6 +43,7 @@ import it.unimi.dsi.fastutil.longs.LongIterator;
 import it.unimi.dsi.fastutil.objects.ObjectIterators;
 import it.unimi.dsi.lang.FlyweightPrototype;
 import it.unimi.dsi.sux4j.util.EliasFanoIndexedMonotoneLongBigList;
+import it.unimi.dsi.sux4j.util.EliasFanoMonotoneLongBigList;
 
 /**
  * A directed graph represented using quasi-succinct data structures.
@@ -58,7 +59,7 @@ public class SuccinctIntDirectedGraph extends AbstractGraph<Integer, Integer> im
 	private final static class CumulativeSuccessors<E> implements LongIterator {
 		private final Graph<Integer, E> graph;
 		int x = -1;
-		long next = 0, last, cumul = 0;
+		long next = 0, last = 1, cumul = 0;
 		Iterator<E> successors = ObjectIterators.emptyIterator();
 		private final Function<Integer, Iterable<E>> succ;
 		private final int n;
@@ -79,8 +80,9 @@ public class SuccinctIntDirectedGraph extends AbstractGraph<Integer, Integer> im
 				if (++x == n) return false;
 				successors = succ.apply(x).iterator();
 			}
-			next = (last = Graphs.getOppositeVertex(graph, successors.next(), x)) + cumul + 1;
-			last++;
+			final int s = Graphs.getOppositeVertex(graph, successors.next(), x);
+			next = cumul + s;
+			last = s + 1;
 			return true;
 		}
 
@@ -124,13 +126,13 @@ public class SuccinctIntDirectedGraph extends AbstractGraph<Integer, Integer> im
 	/** The cumulative list of outdegrees. */
 	private final EliasFanoIndexedMonotoneLongBigList cumulativeOutdegrees;
 	/** The cumulative list of indegrees. */
-	private final EliasFanoIndexedMonotoneLongBigList cumulativeIndegrees;
+	private final EliasFanoMonotoneLongBigList cumulativeIndegrees;
 	/** The cumulative list of successor lists. */
 	private final EliasFanoIndexedMonotoneLongBigList successors;
 	/** The cumulative list of predecessor lists. */
-	private final EliasFanoIndexedMonotoneLongBigList predecessors;
+	private final EliasFanoMonotoneLongBigList predecessors;
 
-	protected SuccinctIntDirectedGraph(final int n, final int m, final EliasFanoIndexedMonotoneLongBigList cumulativeOutdegrees, final EliasFanoIndexedMonotoneLongBigList cumulativeIndegrees, final EliasFanoIndexedMonotoneLongBigList successors, final EliasFanoIndexedMonotoneLongBigList predecessors) {
+	protected SuccinctIntDirectedGraph(final int n, final int m, final EliasFanoIndexedMonotoneLongBigList cumulativeOutdegrees, final EliasFanoMonotoneLongBigList cumulativeIndegrees, final EliasFanoIndexedMonotoneLongBigList successors, final EliasFanoMonotoneLongBigList predecessors) {
 		this.cumulativeOutdegrees = cumulativeOutdegrees;
 		this.cumulativeIndegrees = cumulativeIndegrees;
 		this.successors = successors;
@@ -163,7 +165,7 @@ public class SuccinctIntDirectedGraph extends AbstractGraph<Integer, Integer> im
 		}
 
 		cumulativeOutdegrees = new EliasFanoIndexedMonotoneLongBigList(n + 1, m, new CumulativeDegrees(n, graph::outDegreeOf));
-		cumulativeIndegrees = new EliasFanoIndexedMonotoneLongBigList(n + 1, m, new CumulativeDegrees(n, graph::inDegreeOf));
+		cumulativeIndegrees = new EliasFanoMonotoneLongBigList(n + 1, m, new CumulativeDegrees(n, graph::inDegreeOf));
 
 		successors = new EliasFanoIndexedMonotoneLongBigList(m + 1, forwardUpperBound + n, new CumulativeSuccessors<>(graph, iterables::outgoingEdgesOf));
 		predecessors = new EliasFanoIndexedMonotoneLongBigList(m + 1, backwardUpperBound + n, new CumulativeSuccessors<>(graph, iterables::incomingEdgesOf));
@@ -321,8 +323,7 @@ public class SuccinctIntDirectedGraph extends AbstractGraph<Integer, Integer> im
     {
 		assertEdgeExist(e);
 		final long cumul = cumulativeOutdegrees.weakPredecessor(e);
-		final long base = successors.getLong(cumul) + 1;
-		return (int)(successors.getLong(e + 1) - base);
+		return (int)(successors.getLong(e + 1) - successors.getLong(cumul) - 1);
     }
 
     @Override
