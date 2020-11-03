@@ -9,6 +9,6 @@ module org.jgrapht.opt
 	requires transitive webgraph;
 	requires transitive webgraph.big;
 	requires transitive it.unimi.dsi.dsiutils;
-	requires transitive sux4j;
+	requires transitive it.unimi.dsi.sux4j;
 	requires transitive com.google.common;
 }

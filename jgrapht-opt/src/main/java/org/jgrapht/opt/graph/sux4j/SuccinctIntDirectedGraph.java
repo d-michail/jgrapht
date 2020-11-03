@@ -42,6 +42,7 @@ import it.unimi.dsi.fastutil.ints.IntSets;
 import it.unimi.dsi.fastutil.longs.LongIterator;
 import it.unimi.dsi.fastutil.objects.ObjectIterators;
 import it.unimi.dsi.lang.FlyweightPrototype;
+import it.unimi.dsi.sux4j.util.EliasFanoIndexedMonotoneLongBigList;
 
 /**
  * A directed graph represented using quasi-succinct data structures.
