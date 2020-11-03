@@ -22,7 +22,6 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
-import java.io.IOException;
 import java.util.function.Supplier;
 
 import org.jgrapht.generate.GnpRandomGraphGenerator;
@@ -33,7 +32,6 @@ import org.junit.Test;
 
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.ints.IntSets;
-import it.unimi.dsi.fastutil.io.BinIO;
 import it.unimi.dsi.util.XoRoShiRo128PlusPlusRandomGenerator;
 
 public class SuccinctIntDirectedGraphTest
@@ -168,6 +166,29 @@ public class SuccinctIntDirectedGraphTest
     }
 
 	@Test
+	public void testSink()
+	{
+		final DefaultDirectedGraph<Integer, DefaultEdge> d = new DefaultDirectedGraph<>(new Supplier<Integer>() {
+			private int id = 0;
+
+			@Override
+			public Integer get() {
+				return id++;
+			}
+		}, SupplierUtil.createDefaultEdgeSupplier(), false);
+		for (int i = 0; i < 3; i++) d.addVertex(i);
+		d.addEdge(0, 1);
+		d.addEdge(2, 0);
+		final SuccinctIntDirectedGraph s = new SuccinctIntDirectedGraph(d);
+		assertEquals(0, s.getEdge(0, 1).intValue());
+		assertEquals(1, s.getEdge(2, 0).intValue());
+		assertEquals(0, s.getEdgeSource(0).intValue());
+		assertEquals(1, s.getEdgeTarget(0).intValue());
+		assertEquals(2, s.getEdgeSource(1).intValue());
+		assertEquals(0, s.getEdgeTarget(1).intValue());
+	}
+
+	@Test
 	public void testRandom() {
 		final GnpRandomGraphGenerator<Integer, DefaultEdge> r = new GnpRandomGraphGenerator<>(1000, .1, 0, false);
 		final DefaultDirectedGraph<Integer, DefaultEdge> s = new DefaultDirectedGraph<>(new Supplier<Integer>()
@@ -191,11 +212,5 @@ public class SuccinctIntDirectedGraphTest
 			final int y = random.nextInt(n);
 			assertEquals(s.containsEdge(x, y), t.containsEdge(x, y));
 		}
-	}
-
-	@Test
-	public void testTemp() throws ClassNotFoundException, IOException {
-		final SuccinctIntDirectedGraph s = (SuccinctIntDirectedGraph)BinIO.loadObject("/home/vigna/git/jgrapht/enwiki-2020.sux");
-		System.err.println(s.getEdgeTarget(806));
 	}
 }

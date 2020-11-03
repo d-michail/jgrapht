@@ -79,7 +79,8 @@ public class SuccinctIntDirectedGraph extends AbstractGraph<Integer, Integer> im
 				if (++x == n) return false;
 				successors = succ.apply(x).iterator();
 			}
-			next = (last = Graphs.getOppositeVertex(graph, successors.next(), x)) + cumul + x + 1;
+			next = (last = Graphs.getOppositeVertex(graph, successors.next(), x)) + cumul + 1;
+			last++;
 			return true;
 		}
 
@@ -241,9 +242,7 @@ public class SuccinctIntDirectedGraph extends AbstractGraph<Integer, Integer> im
     public int inDegreeOf(final Integer vertex)
     {
         assertVertexExist(vertex);
-		final long[] result = new long[2];
-		cumulativeIndegrees.get(vertex, result);
-		return (int)(result[1] - result[0]);
+		return (int)cumulativeIndegrees.getDelta(vertex);
 	}
 
     @Override
