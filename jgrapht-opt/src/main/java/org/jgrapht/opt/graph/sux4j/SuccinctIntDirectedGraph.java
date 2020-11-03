@@ -118,7 +118,7 @@ public class SuccinctIntDirectedGraph extends AbstractGraph<Integer, Integer> im
 
 	/** The number of vertices in the graph. */
 	private final int n;
-	/** The number of egdges in the graph. */
+	/** The number of edges in the graph. */
 	private final int m;
 	/** The cumulative list of outdegrees. */
 	private final EliasFanoIndexedMonotoneLongBigList cumulativeOutdegrees;
@@ -273,9 +273,7 @@ public class SuccinctIntDirectedGraph extends AbstractGraph<Integer, Integer> im
     public int outDegreeOf(final Integer vertex)
     {
         assertVertexExist(vertex);
-		final long[] result = new long[2];
-		cumulativeOutdegrees.get(vertex, result);
-		return (int)(result[1] - result[0]);
+		return (int)cumulativeOutdegrees.getDelta(vertex);
 	}
 
     @Override
@@ -399,10 +397,27 @@ public class SuccinctIntDirectedGraph extends AbstractGraph<Integer, Integer> im
 
     }
 
-	private final static class DefaultGraphIterablesExtension extends DefaultGraphIterables<Integer, Integer> implements Serializable {
+	// This kluge is necessary as DefaultGraphIterables does not have a no-arg constructor
+	private static class KlugeGraphIterables extends DefaultGraphIterables<Integer, Integer> {
+		protected KlugeGraphIterables() {
+			super(null);
+		}
+
+		protected KlugeGraphIterables(final SuccinctIntDirectedGraph graph) {
+			super(graph);
+		}
+	}
+
+	private final static class SuccinctGraphIterables extends KlugeGraphIterables implements Serializable {
 		private static final long serialVersionUID = 0L;
 		private final SuccinctIntDirectedGraph graph;
-		private DefaultGraphIterablesExtension(final SuccinctIntDirectedGraph graph) {
+
+		private SuccinctGraphIterables() {
+			super(null);
+			graph = null;
+		}
+
+		private SuccinctGraphIterables(final SuccinctIntDirectedGraph graph) {
 			super(graph);
 			this.graph = graph;
 		}
@@ -456,7 +471,7 @@ public class SuccinctIntDirectedGraph extends AbstractGraph<Integer, Integer> im
 		}
 	}
 
-	private final GraphIterables<Integer, Integer> ITERABLES = new DefaultGraphIterablesExtension(this);
+	private final GraphIterables<Integer, Integer> ITERABLES = new SuccinctGraphIterables(this);
 
 	@Override
 	public GraphIterables<Integer, Integer> iterables() {

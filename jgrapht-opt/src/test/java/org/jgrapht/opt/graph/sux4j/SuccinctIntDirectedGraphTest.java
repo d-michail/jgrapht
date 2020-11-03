@@ -22,6 +22,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
+import java.io.IOException;
 import java.util.function.Supplier;
 
 import org.jgrapht.generate.GnpRandomGraphGenerator;
@@ -32,6 +33,7 @@ import org.junit.Test;
 
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.ints.IntSets;
+import it.unimi.dsi.fastutil.io.BinIO;
 import it.unimi.dsi.util.XoRoShiRo128PlusPlusRandomGenerator;
 
 public class SuccinctIntDirectedGraphTest
@@ -189,5 +191,11 @@ public class SuccinctIntDirectedGraphTest
 			final int y = random.nextInt(n);
 			assertEquals(s.containsEdge(x, y), t.containsEdge(x, y));
 		}
+	}
+
+	@Test
+	public void testTemp() throws ClassNotFoundException, IOException {
+		final SuccinctIntDirectedGraph s = (SuccinctIntDirectedGraph)BinIO.loadObject("/home/vigna/git/jgrapht/enwiki-2020.sux");
+		System.err.println(s.getEdgeTarget(806));
 	}
 }
