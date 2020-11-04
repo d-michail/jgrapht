@@ -190,8 +190,34 @@ public class SuccinctIntDirectedGraphTest
 	}
 
 	@Test
-	public void testRandom() {
+	public void testRandomDense() {
 		final GnpRandomGraphGenerator<Integer, DefaultEdge> r = new GnpRandomGraphGenerator<>(1000, .1, 0, false);
+		final DefaultDirectedGraph<Integer, DefaultEdge> s = new DefaultDirectedGraph<>(new Supplier<Integer>()
+        {
+            private int id = 0;
+
+            @Override
+			public Integer get()
+            {
+				return id++;
+            }
+		}, SupplierUtil.createDefaultEdgeSupplier(), false);
+		r.generateGraph(s);
+		final SuccinctIntDirectedGraph t = new SuccinctIntDirectedGraph(s);
+		for (final Integer e : t.edgeSet()) assertTrue(e.toString(), s.containsEdge(t.getEdgeSource(e), t.getEdgeTarget(e)));
+		for (final DefaultEdge e : s.edgeSet()) assertTrue(e.toString(), t.containsEdge(s.getEdgeSource(e), s.getEdgeTarget(e)));
+		final XoRoShiRo128PlusPlusRandomGenerator random = new XoRoShiRo128PlusPlusRandomGenerator();
+		final int n = (int)s.iterables().vertexCount();
+		for (int i = 0; i < 10000; i++) {
+			final int x = random.nextInt(n);
+			final int y = random.nextInt(n);
+			assertEquals(s.containsEdge(x, y), t.containsEdge(x, y));
+		}
+	}
+
+	@Test
+	public void testRandomSparse() {
+		final GnpRandomGraphGenerator<Integer, DefaultEdge> r = new GnpRandomGraphGenerator<>(1000, .001, 0, false);
 		final DefaultDirectedGraph<Integer, DefaultEdge> s = new DefaultDirectedGraph<>(new Supplier<Integer>()
         {
             private int id = 0;
