@@ -51,7 +51,7 @@ import it.unimi.dsi.sux4j.util.EliasFanoMonotoneLongBigList;
  * @author Sebastiano Vigna
  */
 
-public class SuccinctIntDirectedGraph extends AbstractGraph<Integer, Integer> implements Serializable, FlyweightPrototype<SuccinctIntDirectedGraph>
+public class SuccinctIntUndirectedGraph extends AbstractGraph<Integer, Integer> implements Serializable, FlyweightPrototype<SuccinctIntUndirectedGraph>
 {
 	private static final long serialVersionUID = 0L;
 	protected static final String UNMODIFIABLE = "this graph is unmodifiable";
@@ -62,12 +62,14 @@ public class SuccinctIntDirectedGraph extends AbstractGraph<Integer, Integer> im
 		long next = 0, last = 1, cumul = 0;
 		int[] successors = IntArrays.EMPTY_ARRAY;
 		private final int n;
+		private final boolean sorted;
 		private final Function<Integer, Integer> degree;
 		private final Function<Integer, Iterable<E>> succ;
 
-		public CumulativeSuccessors(final Graph<Integer, E> graph, final Function<Integer, Integer> degree, final Function<Integer, Iterable<E>> succ) {
+		public CumulativeSuccessors(final Graph<Integer, E> graph, final boolean sorted, final Function<Integer, Integer> degree, final Function<Integer, Iterable<E>> succ) {
 			this.n = (int)graph.iterables().vertexCount();
 			this.graph = graph;
+			this.sorted = sorted;
 			this.degree = degree;
 			this.succ = succ;
 		}
@@ -80,11 +82,18 @@ public class SuccinctIntDirectedGraph extends AbstractGraph<Integer, Integer> im
 				cumul += last;
 				last = 0;
 				if (++x == n) return false;
-				d = degree.apply(x);
-				successors = IntArrays.grow(successors, d);
-				int j = 0;
-				for (final E e : succ.apply(x)) successors[j++] = Graphs.getOppositeVertex(graph, e, x);
+				successors = IntArrays.grow(successors, degree.apply(x));
+				int d = 0;
+				for (final E e : succ.apply(x)) {
+					final int y = Graphs.getOppositeVertex(graph, e, x);
+					if (sorted) {
+						if (x <= y) successors[d++] = y;
+					} else {
+						if (x >= y) successors[d++] = y;
+					}
+				}
 				Arrays.sort(successors, 0, d);
+				this.d = d;
 				i = 0;
 			}
 			next = cumul + successors[i];
@@ -102,27 +111,38 @@ public class SuccinctIntDirectedGraph extends AbstractGraph<Integer, Integer> im
 		}
 	}
 
-	private final static class CumulativeDegrees implements LongIterator {
-		private final Function<Integer, Integer> degreeOf;
+	private final static class CumulativeDegrees<E> implements LongIterator {
 		private final int n;
-		private int i = -1;
+		private int x = -1;
 		private long cumul = 0;
+		private final Function<Integer, Iterable<E>> succ;
+		private final boolean sorted;
+		private final Graph<Integer, E> graph;
 
-		public CumulativeDegrees(final int n, final Function<Integer, Integer> degreeOf) {
-			this.n = n;
-			this.degreeOf = degreeOf;
+		public CumulativeDegrees(final Graph<Integer, E> graph, final boolean sorted, final Function<Integer, Iterable<E>> succ) {
+			this.n = (int)graph.iterables().vertexCount();
+			this.graph = graph;
+			this.succ = succ;
+			this.sorted = sorted;
 		}
 
 		@Override
 		public boolean hasNext() {
-			return i < n;
+			return x < n;
 		}
 
 		@Override
 		public long nextLong() {
 			if (!hasNext()) throw new NoSuchElementException();
-			if (i == -1) return ++i;
-			return cumul += degreeOf.apply(i++);
+			if (x == -1) return ++x;
+			int d = 0;
+			if (sorted) {
+				for (final E e : succ.apply(x)) if (x <= Graphs.getOppositeVertex(graph, e, x)) d++;
+			} else {
+				for (final E e : succ.apply(x)) if (x >= Graphs.getOppositeVertex(graph, e, x)) d++;
+			}
+			x++;
+			return cumul += d;
 		}
 	}
 
@@ -139,7 +159,7 @@ public class SuccinctIntDirectedGraph extends AbstractGraph<Integer, Integer> im
 	/** The cumulative list of predecessor lists. */
 	private final EliasFanoMonotoneLongBigList predecessors;
 
-	protected SuccinctIntDirectedGraph(final int n, final int m, final EliasFanoIndexedMonotoneLongBigList cumulativeOutdegrees, final EliasFanoMonotoneLongBigList cumulativeIndegrees, final EliasFanoIndexedMonotoneLongBigList successors, final EliasFanoMonotoneLongBigList predecessors) {
+	protected SuccinctIntUndirectedGraph(final int n, final int m, final EliasFanoIndexedMonotoneLongBigList cumulativeOutdegrees, final EliasFanoMonotoneLongBigList cumulativeIndegrees, final EliasFanoIndexedMonotoneLongBigList successors, final EliasFanoMonotoneLongBigList predecessors) {
 		this.cumulativeOutdegrees = cumulativeOutdegrees;
 		this.cumulativeIndegrees = cumulativeIndegrees;
 		this.successors = successors;
@@ -153,11 +173,11 @@ public class SuccinctIntDirectedGraph extends AbstractGraph<Integer, Integer> im
 	 *
 	 * @param graph a directed graph.
 	 */
-	public <E> SuccinctIntDirectedGraph(final Graph<Integer, E> graph)
+	public <E> SuccinctIntUndirectedGraph(final Graph<Integer, E> graph)
     {
 
-		if (graph.getType().isUndirected()) throw new IllegalArgumentException("This class supports directed graphs only");
-		assert graph.getType().isDirected();
+		if (graph.getType().isDirected()) throw new IllegalArgumentException("This class supports directed graphs only");
+		assert graph.getType().isUndirected();
 		final GraphIterables<Integer, E> iterables = graph.iterables();
 		n = (int)iterables.vertexCount();
 		m = (int)iterables.edgeCount();
@@ -165,19 +185,24 @@ public class SuccinctIntDirectedGraph extends AbstractGraph<Integer, Integer> im
 		long backwardUpperBound = 0;
 		for (int x = 0; x < n; x++) {
 			int maxSucc = 0;
-			for (final E e : iterables.outgoingEdgesOf(x)) maxSucc = Math.max(maxSucc, Graphs.getOppositeVertex(graph, e, x));
+			for (final E e : iterables.outgoingEdgesOf(x)) {
+				final int y = Graphs.getOppositeVertex(graph, e, x);
+				if (y >= x) maxSucc = Math.max(maxSucc, y);
+			}
 			forwardUpperBound += maxSucc;
 			int maxPred = 0;
-			for (final E e : iterables.incomingEdgesOf(x)) maxPred = Math.max(maxPred, Graphs.getOppositeVertex(graph, e, x));
+			for (final E e : iterables.incomingEdgesOf(x)) {
+				final int y = Graphs.getOppositeVertex(graph, e, x);
+				if (y <= x) maxPred = Math.max(maxPred, y);
+			}
 			backwardUpperBound += maxPred;
 		}
 
-		cumulativeOutdegrees = new EliasFanoIndexedMonotoneLongBigList(n + 1, m, new CumulativeDegrees(n, graph::outDegreeOf));
-		cumulativeIndegrees = new EliasFanoMonotoneLongBigList(n + 1, m, new CumulativeDegrees(n, graph::inDegreeOf));
+		cumulativeOutdegrees = new EliasFanoIndexedMonotoneLongBigList(n + 1, m, new CumulativeDegrees<>(graph, true, iterables::edgesOf));
+		cumulativeIndegrees = new EliasFanoMonotoneLongBigList(n + 1, m, new CumulativeDegrees<>(graph, false, iterables::edgesOf));
 
-		successors = new EliasFanoIndexedMonotoneLongBigList(m + 1, forwardUpperBound + n, new CumulativeSuccessors<>(graph, graph::outDegreeOf, iterables::outgoingEdgesOf));
-		predecessors = new EliasFanoIndexedMonotoneLongBigList(m + 1, backwardUpperBound + n, new CumulativeSuccessors<>(graph, graph::inDegreeOf, iterables::incomingEdgesOf));
-
+		successors = new EliasFanoIndexedMonotoneLongBigList(m + 1, forwardUpperBound + n, new CumulativeSuccessors<>(graph, true, graph::outDegreeOf, iterables::outgoingEdgesOf));
+		predecessors = new EliasFanoIndexedMonotoneLongBigList(m + 1, backwardUpperBound + n, new CumulativeSuccessors<>(graph, false, graph::inDegreeOf, iterables::incomingEdgesOf));
 	}
 
     @Override
@@ -237,61 +262,42 @@ public class SuccinctIntDirectedGraph extends AbstractGraph<Integer, Integer> im
     @Override
 	public int degreeOf(final Integer vertex)
     {
-		return inDegreeOf(vertex) + outDegreeOf(vertex);
+		return (int)cumulativeIndegrees.getDelta(vertex) + (int)cumulativeOutdegrees.getDelta(vertex);
 	}
 
     @Override
 	public IntSet edgesOf(final Integer vertex)
     {
-		final IntSet result = outgoingEdgesOf(vertex);
-		result.addAll(incomingEdgesOf(vertex));
-		return result;
+		assertVertexExist(vertex);
+		final long[] result = new long[2];
+		cumulativeOutdegrees.get(vertex, result);
+		final IntSet s = new IntOpenHashSet(ITERABLES.incomingEdgesOf(vertex).iterator());
+		s.addAll(IntSets.fromTo((int)result[0], (int)result[1]));
+		return s;
 	}
 
     @Override
     public int inDegreeOf(final Integer vertex)
     {
-        assertVertexExist(vertex);
-		return (int)cumulativeIndegrees.getDelta(vertex);
+		return degreeOf(vertex);
 	}
 
     @Override
 	public IntSet incomingEdgesOf(final Integer vertex)
     {
-        assertVertexExist(vertex);
-		final long[] result = new long[2];
-		cumulativeIndegrees.get(vertex, result);
-		final int d = (int)(result[1] - result[0]);
-		final long pred[] = new long[d + 1];
-		predecessors.get(result[0], pred, 0, d + 1);
-
-		final IntOpenHashSet s = new IntOpenHashSet();
-		final long base = pred[0] + 1;
-		for (int i = 1; i <= d; i++) {
-			successors.successor(successors.getLong(cumulativeOutdegrees.getLong(pred[i] - base)) + vertex + 1);
-			final int e = (int)successors.index() - 1;
-			assert getEdgeSource(e).longValue() == pred[i] - base;
-			assert getEdgeTarget(e).longValue() == vertex;
-			s.add(e);
-		}
-
-		return s;
+		return edgesOf(vertex);
     }
 
     @Override
     public int outDegreeOf(final Integer vertex)
     {
-        assertVertexExist(vertex);
-		return (int)cumulativeOutdegrees.getDelta(vertex);
+		return degreeOf(vertex);
 	}
 
     @Override
 	public IntSet outgoingEdgesOf(final Integer vertex)
     {
-        assertVertexExist(vertex);
-		final long[] result = new long[2];
-		cumulativeOutdegrees.get(vertex, result);
-		return IntSets.fromTo((int)result[0], (int)result[1]);
+		return edgesOf(vertex);
     }
 
     @Override
@@ -357,17 +363,31 @@ public class SuccinctIntDirectedGraph extends AbstractGraph<Integer, Integer> im
     @Override
     public Integer getEdge(final Integer sourceVertex, final Integer targetVertex)
     {
+		int x = sourceVertex;
+		int y = targetVertex;
+		if (x > y) {
+			final int t = x;
+			x = y;
+			y = t;
+		}
 		final long[] result = new long[2];
-		cumulativeOutdegrees.get(sourceVertex, result);
-		final long v = successors.getLong(result[0]) + targetVertex + 1;
+		cumulativeOutdegrees.get(x, result);
+		final long v = successors.getLong(result[0]) + y + 1;
 		return successors.successor(v) == v && successors.index() <= result[1] ? (int)successors.index() - 1 : null;
     }
 
 	@Override
 	public boolean containsEdge(final Integer sourceVertex, final Integer targetVertex) {
+		int x = sourceVertex;
+		int y = targetVertex;
+		if (x > y) {
+			final int t = x;
+			x = y;
+			y = t;
+		}
 		final long[] result = new long[2];
-		cumulativeOutdegrees.get(sourceVertex, result);
-		final long v = successors.getLong(result[0]) + targetVertex + 1;
+		cumulativeOutdegrees.get(x, result);
+		final long v = successors.getLong(result[0]) + y + 1;
 		return successors.successor(v) == v && successors.index() <= result[1];
 	}
 
@@ -412,21 +432,21 @@ public class SuccinctIntDirectedGraph extends AbstractGraph<Integer, Integer> im
 			super(null);
 		}
 
-		protected KlugeGraphIterables(final SuccinctIntDirectedGraph graph) {
+		protected KlugeGraphIterables(final SuccinctIntUndirectedGraph graph) {
 			super(graph);
 		}
 	}
 
 	private final static class SuccinctGraphIterables extends KlugeGraphIterables implements Serializable {
 		private static final long serialVersionUID = 0L;
-		private final SuccinctIntDirectedGraph graph;
+		private final SuccinctIntUndirectedGraph graph;
 
 		private SuccinctGraphIterables() {
 			super(null);
 			graph = null;
 		}
 
-		private SuccinctGraphIterables(final SuccinctIntDirectedGraph graph) {
+		private SuccinctGraphIterables(final SuccinctIntUndirectedGraph graph) {
 			super(graph);
 			this.graph = graph;
 		}
@@ -443,11 +463,13 @@ public class SuccinctIntDirectedGraph extends AbstractGraph<Integer, Integer> im
 
 		@Override
 		public Iterable<Integer> edgesOf(final Integer source) {
-			return Iterables.concat(outgoingEdgesOf(source), incomingEdgesOf(source, true));
+			final long[] result = new long[2];
+			graph.cumulativeOutdegrees.get(source, result);
+			return Iterables.concat(IntSets.fromTo((int)result[0], (int)result[1]), incomingEdgesOf(source, true));
 		}
 
 		private Iterable<Integer> incomingEdgesOf(final int target, final boolean skipLoops) {
-			final SuccinctIntDirectedGraph graph = this.graph;
+			final SuccinctIntUndirectedGraph graph = this.graph;
 			final long[] result = new long[2];
 			graph.cumulativeIndegrees.get(target, result);
 			final int d = (int)(result[1] - result[0]);
@@ -486,7 +508,12 @@ public class SuccinctIntDirectedGraph extends AbstractGraph<Integer, Integer> im
 
 		@Override
 		public Iterable<Integer> incomingEdgesOf(final Integer vertex) {
-			return incomingEdgesOf(vertex, false);
+			return edgesOf(vertex);
+		}
+
+		@Override
+		public Iterable<Integer> outgoingEdgesOf(final Integer vertex) {
+			return edgesOf(vertex);
 		}
 	}
 
@@ -498,7 +525,7 @@ public class SuccinctIntDirectedGraph extends AbstractGraph<Integer, Integer> im
 	}
 
 	@Override
-	public SuccinctIntDirectedGraph copy() {
-		return new SuccinctIntDirectedGraph(n, m, cumulativeOutdegrees, cumulativeIndegrees, successors, predecessors);
+	public SuccinctIntUndirectedGraph copy() {
+		return new SuccinctIntUndirectedGraph(n, m, cumulativeOutdegrees, cumulativeIndegrees, successors, predecessors);
 	}
 }
