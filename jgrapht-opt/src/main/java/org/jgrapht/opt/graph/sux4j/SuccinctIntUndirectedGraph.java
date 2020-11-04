@@ -465,10 +465,10 @@ public class SuccinctIntUndirectedGraph extends AbstractGraph<Integer, Integer> 
 		public Iterable<Integer> edgesOf(final Integer source) {
 			final long[] result = new long[2];
 			graph.cumulativeOutdegrees.get(source, result);
-			return Iterables.concat(IntSets.fromTo((int)result[0], (int)result[1]), incomingEdgesOf(source, true));
+			return Iterables.concat(IntSets.fromTo((int)result[0], (int)result[1]), incomingEdgesOfNoLoops(source));
 		}
 
-		private Iterable<Integer> incomingEdgesOf(final int target, final boolean skipLoops) {
+		private Iterable<Integer> incomingEdgesOfNoLoops(final int target) {
 			final SuccinctIntUndirectedGraph graph = this.graph;
 			final long[] result = new long[2];
 			graph.cumulativeIndegrees.get(target, result);
@@ -486,7 +486,7 @@ public class SuccinctIntUndirectedGraph extends AbstractGraph<Integer, Integer> 
 				public boolean hasNext() {
 					if (edge == -1 && i < d) {
 						final long source = pred[i + 1] - base;
-						if (skipLoops && source == target && ++i == d) return false;
+						if (source == target && ++i == d) return false;
 						successors.successor(successors.getLong(graph.cumulativeOutdegrees.getLong(source)) + target + 1);
 						edge = (int)successors.index() - 1;
 						assert graph.getEdgeSource(edge).longValue() == pred[i + 1] - base;
