@@ -32,6 +32,7 @@ import org.jgrapht.GraphType;
 import org.jgrapht.Graphs;
 import org.jgrapht.graph.AbstractGraph;
 import org.jgrapht.graph.DefaultGraphType;
+import org.jgrapht.opt.graph.sparse.SparseIntDirectedGraph;
 
 import com.google.common.collect.Iterables;
 
@@ -41,21 +42,46 @@ import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.ints.IntSet;
 import it.unimi.dsi.fastutil.ints.IntSets;
 import it.unimi.dsi.fastutil.longs.LongIterator;
-import it.unimi.dsi.lang.FlyweightPrototype;
 import it.unimi.dsi.sux4j.util.EliasFanoIndexedMonotoneLongBigList;
 import it.unimi.dsi.sux4j.util.EliasFanoMonotoneLongBigList;
 
 /**
- * A directed graph represented using quasi-succinct data structures.
+ * An immutable directed graph represented using quasi-succinct data structures.
+ *
+ * <p>
+ * The graph representation of this implementation is similar to that of
+ * {@link SparseIntDirectedGraph}: nodes and edges are initial intervals of the natural numbers.
+ * Under the hood, however, this class uses the {@linkplain EliasFanoMonotoneLongBigList
+ * Elias&ndash;Fano representation of monotone sequences}.
+ *
+ * <p>
+ * If the vertex set is compact (i.e., vertices are numbered from 0 consecutively), space usage will
+ * be close to the information-theoretical lower bound (typically, a few times smaller than a
+ * {@link SparseIntDirectedGraph}).
+ *
+ * <p>
+ * Note that {@linkplain #containsEdge(Integer, Integer) adjacency checks} will be performed
+ * essentially in constant time.
+ *
+ * <p>
+ * The {@linkplain #SuccinctIntDirectedGraph(Graph) constructor} takes an existing graph: the
+ * resulting object can be serialized and reused.
+ *
+ * <p>
+ * This class is thread-safe.
  *
  * @author Sebastiano Vigna
  */
 
-public class SuccinctIntDirectedGraph extends AbstractGraph<Integer, Integer> implements Serializable, FlyweightPrototype<SuccinctIntDirectedGraph>
+public class SuccinctIntDirectedGraph extends AbstractGraph<Integer, Integer> implements Serializable
 {
 	private static final long serialVersionUID = 0L;
 	protected static final String UNMODIFIABLE = "this graph is unmodifiable";
 
+	/**
+	 * Turns all lists of successors into a single monotone sequence, bumping by one the value after
+	 * each list (the resulting list starts with a zero).
+	 */
 	private final static class CumulativeSuccessors<E> implements LongIterator {
 		private final Graph<Integer, E> graph;
 		int x = -1, d = 0, i = 0;
@@ -102,6 +128,9 @@ public class SuccinctIntDirectedGraph extends AbstractGraph<Integer, Integer> im
 		}
 	}
 
+	/**
+	 * Iterates over the cumulative degrees (starts with a zero).
+	 */
 	private final static class CumulativeDegrees implements LongIterator {
 		private final Function<Integer, Integer> degreeOf;
 		private final int n;
@@ -139,19 +168,11 @@ public class SuccinctIntDirectedGraph extends AbstractGraph<Integer, Integer> im
 	/** The cumulative list of predecessor lists. */
 	private final EliasFanoMonotoneLongBigList predecessors;
 
-	protected SuccinctIntDirectedGraph(final int n, final int m, final EliasFanoIndexedMonotoneLongBigList cumulativeOutdegrees, final EliasFanoMonotoneLongBigList cumulativeIndegrees, final EliasFanoIndexedMonotoneLongBigList successors, final EliasFanoMonotoneLongBigList predecessors) {
-		this.cumulativeOutdegrees = cumulativeOutdegrees;
-		this.cumulativeIndegrees = cumulativeIndegrees;
-		this.successors = successors;
-		this.predecessors = predecessors;
-		this.n = n;
-		this.m = m;
-	}
-
     /**
-	 * Create a new succinct directed graph from a given graph.
+	 * Creates a new immutable succinct directed graph from a given directed graph.
 	 *
-	 * @param graph a directed graph.
+	 * @param graph a directed graph: for good results, vertices should be numbered consecutively
+	 *            starting from 0.
 	 */
 	public <E> SuccinctIntDirectedGraph(final Graph<Integer, E> graph)
     {
@@ -159,24 +180,26 @@ public class SuccinctIntDirectedGraph extends AbstractGraph<Integer, Integer> im
 		if (graph.getType().isUndirected()) throw new IllegalArgumentException("This class supports directed graphs only");
 		assert graph.getType().isDirected();
 		final GraphIterables<Integer, E> iterables = graph.iterables();
+		if (iterables.vertexCount() > Integer.MAX_VALUE) throw new IllegalArgumentException("The number of nodes (" + iterables.vertexCount() + ") is greater than " + Integer.MAX_VALUE);
+		if (iterables.edgeCount() > Integer.MAX_VALUE) throw new IllegalArgumentException("The number of edges (" + iterables.edgeCount() + ") is greater than " + Integer.MAX_VALUE);
 		n = (int)iterables.vertexCount();
 		m = (int)iterables.edgeCount();
 		long forwardUpperBound = 0;
 		long backwardUpperBound = 0;
 		for (int x = 0; x < n; x++) {
-			int maxSucc = 0;
+			int maxSucc = -1;
 			for (final E e : iterables.outgoingEdgesOf(x)) maxSucc = Math.max(maxSucc, Graphs.getOppositeVertex(graph, e, x));
-			forwardUpperBound += maxSucc;
-			int maxPred = 0;
+			if (maxSucc != -1) forwardUpperBound += maxSucc + 1;
+			int maxPred = -1;
 			for (final E e : iterables.incomingEdgesOf(x)) maxPred = Math.max(maxPred, Graphs.getOppositeVertex(graph, e, x));
-			backwardUpperBound += maxPred;
+			if (maxPred != -1) backwardUpperBound += maxPred + 1;
 		}
 
 		cumulativeOutdegrees = new EliasFanoIndexedMonotoneLongBigList(n + 1, m, new CumulativeDegrees(n, graph::outDegreeOf));
 		cumulativeIndegrees = new EliasFanoMonotoneLongBigList(n + 1, m, new CumulativeDegrees(n, graph::inDegreeOf));
 
-		successors = new EliasFanoIndexedMonotoneLongBigList(m + 1, forwardUpperBound + n, new CumulativeSuccessors<>(graph, graph::outDegreeOf, iterables::outgoingEdgesOf));
-		predecessors = new EliasFanoIndexedMonotoneLongBigList(m + 1, backwardUpperBound + n, new CumulativeSuccessors<>(graph, graph::inDegreeOf, iterables::incomingEdgesOf));
+		successors = new EliasFanoIndexedMonotoneLongBigList(m + 1, forwardUpperBound, new CumulativeSuccessors<>(graph, graph::outDegreeOf, iterables::outgoingEdgesOf));
+		predecessors = new EliasFanoIndexedMonotoneLongBigList(m + 1, backwardUpperBound, new CumulativeSuccessors<>(graph, graph::inDegreeOf, iterables::incomingEdgesOf));
 
 	}
 
@@ -495,10 +518,5 @@ public class SuccinctIntDirectedGraph extends AbstractGraph<Integer, Integer> im
 	@Override
 	public GraphIterables<Integer, Integer> iterables() {
 		return ITERABLES;
-	}
-
-	@Override
-	public SuccinctIntDirectedGraph copy() {
-		return new SuccinctIntDirectedGraph(n, m, cumulativeOutdegrees, cumulativeIndegrees, successors, predecessors);
 	}
 }

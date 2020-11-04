@@ -161,8 +161,6 @@ public class SuccinctIntDirectedGraphTest
 
 		assertEquals(2, s.getEdgeSource(4).intValue());
 		assertEquals(3, s.getEdgeTarget(4).intValue());
-
-		assertEquals(s, s.copy());
     }
 
 

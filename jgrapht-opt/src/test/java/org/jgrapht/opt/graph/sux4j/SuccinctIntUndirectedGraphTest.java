@@ -153,8 +153,6 @@ public class SuccinctIntUndirectedGraphTest
 
 		assertEquals(3, s.getEdgeSource(5).intValue());
 		assertEquals(3, s.getEdgeTarget(5).intValue());
-
-		assertEquals(s, s.copy());
 	}
 
 	@Test
