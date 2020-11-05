@@ -302,8 +302,7 @@ public class SuccinctIntDirectedGraph extends AbstractGraph<Integer, Integer> im
 		final IntOpenHashSet s = new IntOpenHashSet();
 		final long base = pred[0];
 		for (int i = 1; i <= d; i++) {
-			successors.successor(successors.getLong(cumulativeOutdegrees.getLong(pred[i] - base + i - 1)) + vertex + 1);
-			final int e = (int)successors.index() - 1;
+			final int e = (int)successors.successorIndex(successors.getLong(cumulativeOutdegrees.getLong(pred[i] - base + i - 1)) + vertex + 1) - 1;
 			assert getEdgeSource(e).longValue() == pred[i] - base + i - 1;
 			assert getEdgeTarget(e).longValue() == vertex;
 			s.add(e);
@@ -356,8 +355,7 @@ public class SuccinctIntDirectedGraph extends AbstractGraph<Integer, Integer> im
     public Integer getEdgeSource(final Integer e)
     {
 		assertEdgeExist(e);
-		cumulativeOutdegrees.weakPredecessor(e);
-		return (int)cumulativeOutdegrees.index();
+		return (int)cumulativeOutdegrees.weakPredecessorIndex(e);
     }
 
     @Override
@@ -394,7 +392,8 @@ public class SuccinctIntDirectedGraph extends AbstractGraph<Integer, Integer> im
 		final long[] result = new long[2];
 		cumulativeOutdegrees.get(sourceVertex, result);
 		final long v = successors.getLong(result[0]) + targetVertex + 1;
-		return successors.successor(v) == v && successors.index() <= result[1] ? (int)successors.index() - 1 : null;
+		final long index = successors.indexOf(v);
+		return index != -1 && index <= result[1] ? (int)index - 1 : null;
     }
 
 	@Override
@@ -402,7 +401,8 @@ public class SuccinctIntDirectedGraph extends AbstractGraph<Integer, Integer> im
 		final long[] result = new long[2];
 		cumulativeOutdegrees.get(sourceVertex, result);
 		final long v = successors.getLong(result[0]) + targetVertex + 1;
-		return successors.successor(v) == v && successors.index() <= result[1];
+		final long index = successors.indexOf(v);
+		return index != -1 && index <= result[1];
 	}
 
     @Override
@@ -495,8 +495,7 @@ public class SuccinctIntDirectedGraph extends AbstractGraph<Integer, Integer> im
 						if (skipLoops && source == target && ++i == d) return false;
 						final long v = successors.getLong(graph.cumulativeOutdegrees.getLong(source)) + target + 1;
 						assert v == successors.successor(v) : v + " != " + successors.successor(v);
-						successors.successor(v);
-						edge = (int)successors.index() - 1;
+						edge = (int)successors.successorIndex(v) - 1;
 						assert graph.getEdgeSource(edge).longValue() == pred[i + 1] - base + i;
 						assert graph.getEdgeTarget(edge).longValue() == target;
 						i++;

@@ -345,8 +345,7 @@ public class SuccinctIntUndirectedGraph extends AbstractGraph<Integer, Integer> 
     public Integer getEdgeSource(final Integer e)
     {
 		assertEdgeExist(e);
-		cumulativeOutdegrees.weakPredecessor(e);
-		return (int)cumulativeOutdegrees.index();
+		return (int)cumulativeOutdegrees.weakPredecessorIndex(e);
     }
 
     @Override
@@ -390,7 +389,8 @@ public class SuccinctIntUndirectedGraph extends AbstractGraph<Integer, Integer> 
 		final long[] result = new long[2];
 		cumulativeOutdegrees.get(x, result);
 		final long v = successors.getLong(result[0]) + y + 1;
-		return successors.successor(v) == v && successors.index() <= result[1] ? (int)successors.index() - 1 : null;
+		final long index = successors.indexOf(v);
+		return index != -1 && index <= result[1] ? (int)index - 1 : null;
     }
 
 	@Override
@@ -405,7 +405,8 @@ public class SuccinctIntUndirectedGraph extends AbstractGraph<Integer, Integer> 
 		final long[] result = new long[2];
 		cumulativeOutdegrees.get(x, result);
 		final long v = successors.getLong(result[0]) + y + 1;
-		return successors.successor(v) == v && successors.index() <= result[1];
+		final long index = successors.indexOf(v);
+		return index != -1 && index <= result[1];
 	}
 
     @Override
@@ -509,8 +510,7 @@ public class SuccinctIntUndirectedGraph extends AbstractGraph<Integer, Integer> 
 						if (source == target && ++i == d) return false;
 						final long v = successors.getLong(graph.cumulativeOutdegrees.getLong(source)) + target + 1;
 						assert v == successors.successor(v) : v + " != " + successors.successor(v);
-						successors.successor(v);
-						edge = (int)successors.index() - 1;
+						edge = (int)successors.successorIndex(v) - 1;
 						assert graph.getEdgeSource(edge).longValue() == pred[i + 1] - base + i;
 						assert graph.getEdgeTarget(edge).longValue() == target;
 						i++;
