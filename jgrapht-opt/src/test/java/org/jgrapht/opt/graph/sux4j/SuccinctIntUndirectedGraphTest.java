@@ -107,6 +107,24 @@ public class SuccinctIntUndirectedGraphTest
 		assertFalse(s.containsEdge(4, 2));
 		assertFalse(s.containsEdge(4, 3));
 
+		assertEquals(0, s.getEdgeSource(0).intValue());
+		assertEquals(1, s.getEdgeTarget(0).intValue());
+
+		assertEquals(0, s.getEdgeSource(1).intValue());
+		assertEquals(3, s.getEdgeTarget(1).intValue());
+
+		assertEquals(1, s.getEdgeSource(2).intValue());
+		assertEquals(2, s.getEdgeTarget(2).intValue());
+
+		assertEquals(1, s.getEdgeSource(3).intValue());
+		assertEquals(4, s.getEdgeTarget(3).intValue());
+
+		assertEquals(2, s.getEdgeSource(4).intValue());
+		assertEquals(3, s.getEdgeTarget(4).intValue());
+
+		assertEquals(3, s.getEdgeSource(5).intValue());
+		assertEquals(3, s.getEdgeTarget(5).intValue());
+
 		assertEquals(IntSets.fromTo(0, 2), s.edgesOf(0));
 		assertEquals(new IntOpenHashSet(new int[] { 0, 2, 3 }), s.edgesOf(1));
 		assertEquals(new IntOpenHashSet(new int[] { 2, 4 }), s.edgesOf(2));

@@ -65,20 +65,20 @@ public class SuccinctIntUndirectedGraph extends AbstractGraph<Integer, Integer> 
 	 */
 	private final static class CumulativeSuccessors<E> implements LongIterator {
 		private final Graph<Integer, E> graph;
-		private int x = -1, d = 0, i = 0;
-		private long next = 0, last = 1, cumul = 0;
-		private int[] s = IntArrays.EMPTY_ARRAY;
 		private final int n;
-		private final boolean sorted;
-		private final Function<Integer, Integer> degree;
 		private final Function<Integer, Iterable<E>> succ;
+		private final boolean sorted;
 
-		public CumulativeSuccessors(final Graph<Integer, E> graph, final boolean sorted, final Function<Integer, Integer> degree, final Function<Integer, Iterable<E>> succ) {
+		int x = -1, d, i;
+		long next, last, cumul;
+		int[] s = IntArrays.EMPTY_ARRAY;
+
+		public CumulativeSuccessors(final Graph<Integer, E> graph, final boolean sorted, final Function<Integer, Iterable<E>> succ) {
 			this.n = (int)graph.iterables().vertexCount();
 			this.graph = graph;
 			this.sorted = sorted;
-			this.degree = degree;
 			this.succ = succ;
+			last = sorted ? 1 : 0;
 		}
 
 		@Override
@@ -89,22 +89,27 @@ public class SuccinctIntUndirectedGraph extends AbstractGraph<Integer, Integer> 
 				cumul += last;
 				last = 0;
 				if (++x == n) return false;
-				s = IntArrays.grow(s, degree.apply(x));
 				int d = 0;
 				for (final E e : succ.apply(x)) {
 					final int y = Graphs.getOppositeVertex(graph, e, x);
 					if (sorted) {
-						if (x <= y) s[d++] = y;
+						if (x <= y) {
+							s = IntArrays.grow(s, d + 1);
+							s[d++] = y;
+						}
 					} else {
-						if (x >= y) s[d++] = y;
+						if (x >= y) {
+							s = IntArrays.grow(s, d + 1);
+							s[d++] = y;
+						}
 					}
 				}
 				Arrays.sort(s, 0, d);
 				this.d = d;
 				i = 0;
 			}
-			next = cumul + s[i];
-			last = s[i] + 1;
+			next = cumul + s[i] - (sorted ? 0 : i);
+			last = s[i] + (sorted ? 1 : -i);
 			i++;
 			return true;
 		}
@@ -185,8 +190,9 @@ public class SuccinctIntUndirectedGraph extends AbstractGraph<Integer, Integer> 
 		if (iterables.edgeCount() > Integer.MAX_VALUE) throw new IllegalArgumentException("The number of edges (" + iterables.edgeCount() + ") is greater than " + Integer.MAX_VALUE);
 		n = (int)iterables.vertexCount();
 		m = (int)iterables.edgeCount();
-		long forwardUpperBound = 0;
-		long backwardUpperBound = 0;
+
+		long forwardUpperBound = 0, backwardUpperBound = 0;
+
 		for (int x = 0; x < n; x++) {
 			int maxSucc = -1;
 			for (final E e : iterables.outgoingEdgesOf(x)) {
@@ -194,19 +200,27 @@ public class SuccinctIntUndirectedGraph extends AbstractGraph<Integer, Integer> 
 				if (y >= x) maxSucc = Math.max(maxSucc, y);
 			}
 			if (maxSucc != -1) forwardUpperBound += maxSucc + 1;
-			int maxPred = -1;
+
+			int maxPred = -1, d = 0;
 			for (final E e : iterables.incomingEdgesOf(x)) {
 				final int y = Graphs.getOppositeVertex(graph, e, x);
-				if (y <= x) maxPred = Math.max(maxPred, y);
+				if (y <= x) {
+					maxPred = Math.max(maxPred, y);
+					d++;
+				}
 			}
-			if (maxPred != -1) backwardUpperBound += maxPred + 1;
+			if (maxPred != -1) backwardUpperBound += maxPred - d + 1;
 		}
 
 		cumulativeOutdegrees = new EliasFanoIndexedMonotoneLongBigList(n + 1, m, new CumulativeDegrees<>(graph, true, iterables::edgesOf));
 		cumulativeIndegrees = new EliasFanoMonotoneLongBigList(n + 1, m, new CumulativeDegrees<>(graph, false, iterables::edgesOf));
+		assert cumulativeOutdegrees.getLong(cumulativeOutdegrees.size64() - 1) == m;
+		assert cumulativeIndegrees.getLong(cumulativeIndegrees.size64() - 1) == m;
 
-		successors = new EliasFanoIndexedMonotoneLongBigList(m + 1, forwardUpperBound, new CumulativeSuccessors<>(graph, true, graph::outDegreeOf, iterables::outgoingEdgesOf));
-		predecessors = new EliasFanoIndexedMonotoneLongBigList(m + 1, backwardUpperBound, new CumulativeSuccessors<>(graph, false, graph::inDegreeOf, iterables::incomingEdgesOf));
+		successors = new EliasFanoIndexedMonotoneLongBigList(m + 1, forwardUpperBound, new CumulativeSuccessors<>(graph, true, iterables::outgoingEdgesOf));
+		predecessors = new EliasFanoIndexedMonotoneLongBigList(m + 1, backwardUpperBound, new CumulativeSuccessors<>(graph, false, iterables::incomingEdgesOf));
+		assert successors.getLong(successors.size64() - 1) == forwardUpperBound;
+		assert predecessors.getLong(predecessors.size64() - 1) == backwardUpperBound;
 	}
 
     @Override
@@ -482,7 +496,7 @@ public class SuccinctIntUndirectedGraph extends AbstractGraph<Integer, Integer> 
 			final long pred[] = new long[d + 1];
 			graph.predecessors.get(result[0], pred, 0, d + 1);
 			final EliasFanoIndexedMonotoneLongBigList successors = graph.successors;
-			final long base = pred[0] + 1;
+			final long base = pred[0];
 
 			return () -> new IntIterator() {
 				int i = 0;
@@ -491,11 +505,13 @@ public class SuccinctIntUndirectedGraph extends AbstractGraph<Integer, Integer> 
 				@Override
 				public boolean hasNext() {
 					if (edge == -1 && i < d) {
-						final long source = pred[i + 1] - base;
+						final long source = pred[i + 1] - base + i;
 						if (source == target && ++i == d) return false;
-						successors.successor(successors.getLong(graph.cumulativeOutdegrees.getLong(source)) + target + 1);
+						final long v = successors.getLong(graph.cumulativeOutdegrees.getLong(source)) + target + 1;
+						assert v == successors.successor(v) : v + " != " + successors.successor(v);
+						successors.successor(v);
 						edge = (int)successors.index() - 1;
-						assert graph.getEdgeSource(edge).longValue() == pred[i + 1] - base;
+						assert graph.getEdgeSource(edge).longValue() == pred[i + 1] - base + i;
 						assert graph.getEdgeTarget(edge).longValue() == target;
 						i++;
 					}
