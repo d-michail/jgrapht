@@ -25,7 +25,6 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
-import org.jgrapht.DefaultGraphIterables;
 import org.jgrapht.Graph;
 import org.jgrapht.GraphIterables;
 import org.jgrapht.GraphType;
@@ -429,29 +428,23 @@ public class SuccinctIntDirectedGraph extends AbstractGraph<Integer, Integer> im
 
     }
 
-	// This kluge is necessary as DefaultGraphIterables does not have a no-arg constructor
-	private static class KlugeGraphIterables extends DefaultGraphIterables<Integer, Integer> {
-		protected KlugeGraphIterables() {
-			super(null);
-		}
 
-		protected KlugeGraphIterables(final SuccinctIntDirectedGraph graph) {
-			super(graph);
-		}
-	}
-
-	private final static class SuccinctGraphIterables extends KlugeGraphIterables implements Serializable {
+	private final static class SuccinctGraphIterables implements GraphIterables<Integer, Integer>, Serializable
+	{
 		private static final long serialVersionUID = 0L;
 		private final SuccinctIntDirectedGraph graph;
 
 		private SuccinctGraphIterables() {
-			super(null);
 			graph = null;
 		}
 
 		private SuccinctGraphIterables(final SuccinctIntDirectedGraph graph) {
-			super(graph);
 			this.graph = graph;
+		}
+
+		@Override
+		public Graph<Integer, Integer> getGraph() {
+			return graph;
 		}
 
 		@Override

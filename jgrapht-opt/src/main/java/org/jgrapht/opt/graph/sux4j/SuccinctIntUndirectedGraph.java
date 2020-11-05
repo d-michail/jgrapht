@@ -25,12 +25,12 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
-import org.jgrapht.DefaultGraphIterables;
 import org.jgrapht.Graph;
 import org.jgrapht.GraphIterables;
 import org.jgrapht.GraphType;
 import org.jgrapht.Graphs;
 import org.jgrapht.graph.AbstractGraph;
+import org.jgrapht.graph.DefaultGraphIterables;
 import org.jgrapht.graph.DefaultGraphType;
 
 import com.google.common.collect.Iterables;
@@ -440,18 +440,21 @@ public class SuccinctIntUndirectedGraph extends AbstractGraph<Integer, Integer> 
 		}
 	}
 
-	private final static class SuccinctGraphIterables extends KlugeGraphIterables implements Serializable {
+	private final static class SuccinctGraphIterables implements GraphIterables<Integer, Integer>, Serializable {
 		private static final long serialVersionUID = 0L;
 		private final SuccinctIntUndirectedGraph graph;
 
 		private SuccinctGraphIterables() {
-			super(null);
 			graph = null;
 		}
 
 		private SuccinctGraphIterables(final SuccinctIntUndirectedGraph graph) {
-			super(graph);
 			this.graph = graph;
+		}
+
+		@Override
+		public Graph<Integer, Integer> getGraph() {
+			return graph;
 		}
 
 		@Override
