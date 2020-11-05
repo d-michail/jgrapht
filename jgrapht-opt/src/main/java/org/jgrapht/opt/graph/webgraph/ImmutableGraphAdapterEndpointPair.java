@@ -24,7 +24,6 @@ import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.function.Supplier;
 
-import org.jgrapht.DefaultGraphIterables;
 import org.jgrapht.GraphIterables;
 import org.jgrapht.GraphType;
 import org.jgrapht.graph.AbstractGraph;
@@ -316,7 +315,7 @@ public class ImmutableGraphAdapterEndpointPair extends AbstractGraph<Integer, En
 			final LazyIntIterator successors = immutableGraph.successors(source);
 			for (int target; (target = successors.nextInt()) != -1;) set.add(EndpointPair.ordered(source, target));
 			final LazyIntIterator predecessors = immutableTranspose.successors(source);
-			for (int target; (target = predecessors.nextInt()) != -1;) set.add(EndpointPair.ordered(target, source));
+			for (int target; (target = predecessors.nextInt()) != -1;) if (source != target) set.add(EndpointPair.ordered(target, source));
 		} else {
 			final LazyIntIterator successors = immutableGraph.successors(source);
 			for (int target; (target = successors.nextInt()) != -1;) set.add(EndpointPair.unordered(source, target));
@@ -405,7 +404,12 @@ public class ImmutableGraphAdapterEndpointPair extends AbstractGraph<Integer, En
 		return new ImmutableGraphAdapterEndpointPair(copy, copy);
 	}
 
-	private final GraphIterables<Integer, EndpointPair<Integer>> ITERABLES = new DefaultGraphIterables<>(this) {
+	private final GraphIterables<Integer, EndpointPair<Integer>> ITERABLES = new GraphIterables<>() {
+		@Override
+		public ImmutableGraphAdapterEndpointPair getGraph() {
+			return ImmutableGraphAdapterEndpointPair.this;
+		}
+
 		@Override
 		public long vertexCount() {
 			return n;
@@ -430,8 +434,7 @@ public class ImmutableGraphAdapterEndpointPair extends AbstractGraph<Integer, En
 
 		@Override
 		public Iterable<EndpointPair<Integer>> edgesOf(final Integer source) {
-			// TODO: eliminate self-loop from incoming edges (everywhere)
-			return directed ? Iterables.concat(outgoingEdgesOf(source), incomingEdgesOf(source)) : outgoingEdgesOf(source);
+			return directed ? Iterables.concat(outgoingEdgesOf(source), incomingEdgesOf(source, true)) : outgoingEdgesOf(source);
 		}
 
 		@Override
@@ -439,25 +442,32 @@ public class ImmutableGraphAdapterEndpointPair extends AbstractGraph<Integer, En
 			return immutableTranspose.outdegree(vertex);
 		}
 
-		@Override
-		public Iterable<EndpointPair<Integer>> incomingEdgesOf(final Integer vertex) {
+		private Iterable<EndpointPair<Integer>> incomingEdgesOf(final int x, final boolean skipLoops) {
 			return () -> new Iterator<>() {
-				final LazyIntIterator successors = immutableTranspose.successors(vertex);
+				final LazyIntIterator successors = immutableTranspose.successors(x);
 				int y = successors.nextInt();
 
 				@Override
 				public boolean hasNext() {
-					if (y == -1) y = successors.nextInt();
+					if (y == -1) {
+						y = successors.nextInt();
+						if (skipLoops && x == y) y = successors.nextInt();
+					}
 					return y != -1;
 				}
 
 				@Override
 				public EndpointPair<Integer> next() {
-					final EndpointPair<Integer> edge = directed ? EndpointPair.ordered(y, vertex) : EndpointPair.unordered(y, vertex);
+					final EndpointPair<Integer> edge = directed ? EndpointPair.ordered(y, x) : EndpointPair.unordered(y, x);
 					y = -1;
 					return edge;
 				}
 			};
+		}
+
+		@Override
+		public Iterable<EndpointPair<Integer>> incomingEdgesOf(final Integer vertex) {
+			return incomingEdgesOf(vertex, false);
 		}
 
 		@Override
