@@ -493,7 +493,8 @@ public class SuccinctIntUndirectedGraph extends AbstractGraph<Integer, Integer> 
 
 				@Override
 				public boolean hasNext() {
-					if (edge == -1 && i-- != 0) {
+					if (edge == -1 && i > 0) {
+						i--;
 						final long source = iterator.nextLong() - base--;
 						if (source == target && i-- == 0) return false;
 						edge = (int)successors.successorIndex(successors.getLong(graph.cumulativeOutdegrees.getLong(source)) + target + 1) - 1;

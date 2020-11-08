@@ -22,6 +22,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
+import java.util.Iterator;
 import java.util.function.Supplier;
 
 import org.jgrapht.generate.GnpRandomGraphGenerator;
@@ -162,6 +163,18 @@ public class SuccinctIntDirectedGraphTest
 		assertEquals(new IntOpenHashSet(new int[] {
 				7 }), new IntOpenHashSet(s.iterables().incomingEdgesOf(4).iterator()));
 
+		Iterator<Integer> iterator = s.iterables().edgesOf(0).iterator();
+		while (iterator.hasNext()) iterator.next();
+		assertFalse(iterator.hasNext());
+		assertFalse(iterator.hasNext());
+		iterator = s.iterables().outgoingEdgesOf(0).iterator();
+		while (iterator.hasNext()) iterator.next();
+		assertFalse(iterator.hasNext());
+		assertFalse(iterator.hasNext());
+		iterator = s.iterables().incomingEdgesOf(0).iterator();
+		while (iterator.hasNext()) iterator.next();
+		assertFalse(iterator.hasNext());
+		assertFalse(iterator.hasNext());
     }
 
 
