@@ -494,10 +494,9 @@ public class SuccinctIntUndirectedGraph extends AbstractGraph<Integer, Integer> 
 			final long[] result = new long[2];
 			graph.cumulativeIndegrees.get(target, result);
 			final int d = (int)(result[1] - result[0]);
-			final long pred[] = new long[d + 1];
-			graph.predecessors.get(result[0], pred, 0, d + 1);
 			final EliasFanoIndexedMonotoneLongBigList successors = graph.successors;
-			final long base = pred[0];
+			final EliasFanoMonotoneLongBigList predecessors = graph.predecessors;
+			final long base = predecessors.getLong(result[0]);
 
 			return () -> new IntIterator() {
 				int i = 0;
@@ -506,12 +505,12 @@ public class SuccinctIntUndirectedGraph extends AbstractGraph<Integer, Integer> 
 				@Override
 				public boolean hasNext() {
 					if (edge == -1 && i < d) {
-						final long source = pred[i + 1] - base + i;
+						final long source = predecessors.getLong(result[0] + i + 1) - base + i;
 						if (source == target && ++i == d) return false;
 						final long v = successors.getLong(graph.cumulativeOutdegrees.getLong(source)) + target + 1;
 						assert v == successors.successor(v) : v + " != " + successors.successor(v);
 						edge = (int)successors.successorIndex(v) - 1;
-						assert graph.getEdgeSource(edge).longValue() == pred[i + 1] - base + i;
+						assert graph.getEdgeSource(edge).longValue() == predecessors.getLong(result[0] + i + 1) - base + i;
 						assert graph.getEdgeTarget(edge).longValue() == target;
 						i++;
 					}

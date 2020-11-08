@@ -479,24 +479,24 @@ public class SuccinctIntDirectedGraph extends AbstractGraph<Integer, Integer> im
 			final long[] result = new long[2];
 			graph.cumulativeIndegrees.get(target, result);
 			final int d = (int)(result[1] - result[0]);
-			final long pred[] = new long[d + 1];
-			graph.predecessors.get(result[0], pred, 0, d + 1);
 			final EliasFanoIndexedMonotoneLongBigList successors = graph.successors;
-			final long base = pred[0];
+			final EliasFanoMonotoneLongBigList predecessors = graph.predecessors;
 
 			return () -> new IntIterator() {
 				int i = 0;
 				int edge = -1;
+				long index = result[0];
+				long base = predecessors.getLong(index++);
 
 				@Override
 				public boolean hasNext() {
 					if (edge == -1 && i < d) {
-						final long source = pred[i + 1] - base + i;
+						final long source = predecessors.getLong(index++) - ++base;
 						if (skipLoops && source == target && ++i == d) return false;
 						final long v = successors.getLong(graph.cumulativeOutdegrees.getLong(source)) + target + 1;
 						assert v == successors.successor(v) : v + " != " + successors.successor(v);
 						edge = (int)successors.successorIndex(v) - 1;
-						assert graph.getEdgeSource(edge).longValue() == pred[i + 1] - base + i;
+						assert graph.getEdgeSource(edge).longValue() == predecessors.getLong(index - 1) - base + 1;
 						assert graph.getEdgeTarget(edge).longValue() == target;
 						i++;
 					}
