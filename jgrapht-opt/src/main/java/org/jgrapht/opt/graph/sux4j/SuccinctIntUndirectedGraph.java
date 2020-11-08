@@ -41,6 +41,7 @@ import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.ints.IntSet;
 import it.unimi.dsi.fastutil.ints.IntSets;
 import it.unimi.dsi.fastutil.longs.LongIterator;
+import it.unimi.dsi.fastutil.longs.LongBigListIterator;
 import it.unimi.dsi.sux4j.util.EliasFanoIndexedMonotoneLongBigList;
 import it.unimi.dsi.sux4j.util.EliasFanoMonotoneLongBigList;
 
@@ -495,22 +496,22 @@ public class SuccinctIntUndirectedGraph extends AbstractGraph<Integer, Integer> 
 			graph.cumulativeIndegrees.get(target, result);
 			final int d = (int)(result[1] - result[0]);
 			final EliasFanoIndexedMonotoneLongBigList successors = graph.successors;
-			final EliasFanoMonotoneLongBigList predecessors = graph.predecessors;
-			final long base = predecessors.getLong(result[0]);
+			final LongBigListIterator iterator = graph.predecessors.listIterator(result[0]);
 
 			return () -> new IntIterator() {
 				int i = 0;
 				int edge = -1;
+				long base = iterator.nextLong();
 
 				@Override
 				public boolean hasNext() {
 					if (edge == -1 && i < d) {
-						final long source = predecessors.getLong(result[0] + i + 1) - base + i;
+						final long source = iterator.nextLong() - ++base;
 						if (source == target && ++i == d) return false;
 						final long v = successors.getLong(graph.cumulativeOutdegrees.getLong(source)) + target + 1;
 						assert v == successors.successor(v) : v + " != " + successors.successor(v);
 						edge = (int)successors.successorIndex(v) - 1;
-						assert graph.getEdgeSource(edge).longValue() == predecessors.getLong(result[0] + i + 1) - base + i;
+						assert graph.getEdgeSource(edge).longValue() == source;
 						assert graph.getEdgeTarget(edge).longValue() == target;
 						i++;
 					}
