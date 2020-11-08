@@ -78,7 +78,7 @@
         <dependency>
             <groupId>it.unimi.dsi</groupId>
             <artifactId>webgraph-big</artifactId>
-            <version>3.6.2</version>
+            <version>3.6.3</version>
         </dependency>
         <dependency>
             <groupId>junit</groupId>
