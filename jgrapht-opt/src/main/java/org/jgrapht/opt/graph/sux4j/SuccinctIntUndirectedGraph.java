@@ -30,7 +30,6 @@ import org.jgrapht.GraphIterables;
 import org.jgrapht.GraphType;
 import org.jgrapht.Graphs;
 import org.jgrapht.graph.AbstractGraph;
-import org.jgrapht.graph.DefaultGraphIterables;
 import org.jgrapht.graph.DefaultGraphType;
 
 import com.google.common.collect.Iterables;
@@ -40,8 +39,8 @@ import it.unimi.dsi.fastutil.ints.IntIterator;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.ints.IntSet;
 import it.unimi.dsi.fastutil.ints.IntSets;
-import it.unimi.dsi.fastutil.longs.LongIterator;
 import it.unimi.dsi.fastutil.longs.LongBigListIterator;
+import it.unimi.dsi.fastutil.longs.LongIterator;
 import it.unimi.dsi.sux4j.util.EliasFanoIndexedMonotoneLongBigList;
 import it.unimi.dsi.sux4j.util.EliasFanoMonotoneLongBigList;
 
@@ -445,17 +444,6 @@ public class SuccinctIntUndirectedGraph extends AbstractGraph<Integer, Integer> 
 
     }
 
-	// This kluge is necessary as DefaultGraphIterables does not have a no-arg constructor
-	private static class KlugeGraphIterables extends DefaultGraphIterables<Integer, Integer> {
-		protected KlugeGraphIterables() {
-			super(null);
-		}
-
-		protected KlugeGraphIterables(final SuccinctIntUndirectedGraph graph) {
-			super(graph);
-		}
-	}
-
 	private final static class SuccinctGraphIterables implements GraphIterables<Integer, Integer>, Serializable {
 		private static final long serialVersionUID = 0L;
 		private final SuccinctIntUndirectedGraph graph;
@@ -499,21 +487,18 @@ public class SuccinctIntUndirectedGraph extends AbstractGraph<Integer, Integer> 
 			final LongBigListIterator iterator = graph.predecessors.listIterator(result[0]);
 
 			return () -> new IntIterator() {
-				int i = 0;
+				int i = d;
 				int edge = -1;
 				long base = iterator.nextLong();
 
 				@Override
 				public boolean hasNext() {
-					if (edge == -1 && i < d) {
-						final long source = iterator.nextLong() - ++base;
-						if (source == target && ++i == d) return false;
-						final long v = successors.getLong(graph.cumulativeOutdegrees.getLong(source)) + target + 1;
-						assert v == successors.successor(v) : v + " != " + successors.successor(v);
-						edge = (int)successors.successorIndex(v) - 1;
+					if (edge == -1 && i-- != 0) {
+						final long source = iterator.nextLong() - base--;
+						if (source == target && i-- == 0) return false;
+						edge = (int)successors.successorIndex(successors.getLong(graph.cumulativeOutdegrees.getLong(source)) + target + 1) - 1;
 						assert graph.getEdgeSource(edge).longValue() == source;
 						assert graph.getEdgeTarget(edge).longValue() == target;
-						i++;
 					}
 					return edge != -1;
 				}

@@ -298,7 +298,6 @@ public class SuccinctIntDirectedGraph extends AbstractGraph<Integer, Integer> im
 		final long[] result = new long[2];
 		cumulativeIndegrees.get(t, result);
 		final int d = (int)(result[1] - result[0]);
-		final long pred[] = new long[d + 1];
 		final LongBigListIterator iterator = predecessors.listIterator(result[0]);
 
 		final IntOpenHashSet s = new IntOpenHashSet();
@@ -306,8 +305,8 @@ public class SuccinctIntDirectedGraph extends AbstractGraph<Integer, Integer> im
 
 		t++;
 		for (int i = d; i-- != 0; ) {
-			final long source = successors.getLong(iterator.nextLong() - ++base);
-			final int e = (int)(successors.successorIndex(source) + t) - 1;
+			final long source = iterator.nextLong() - base--;
+			final int e = (int)(successors.successorIndex(successors.getLong(cumulativeOutdegrees.getLong(source)) + t)) - 1;
 			assert getEdgeSource(e).longValue() == source;
 			assert getEdgeTarget(e).longValue() == target;
 			s.add(e);
@@ -445,7 +444,6 @@ public class SuccinctIntDirectedGraph extends AbstractGraph<Integer, Integer> im
 
     }
 
-
 	private final static class SuccinctGraphIterables implements GraphIterables<Integer, Integer>, Serializable
 	{
 		private static final long serialVersionUID = 0L;
@@ -486,24 +484,22 @@ public class SuccinctIntDirectedGraph extends AbstractGraph<Integer, Integer> im
 			final int d = (int)(result[1] - result[0]);
 			final EliasFanoIndexedMonotoneLongBigList successors = graph.successors;
 			final LongBigListIterator iterator = graph.predecessors.listIterator(result[0]);
-			final long base = iterator.nextLong();
 
 			return () -> new IntIterator() {
-				int i = 0;
+				int i = d;
 				int edge = -1;
 				long base = iterator.nextLong();
 
 				@Override
 				public boolean hasNext() {
-					if (edge == -1 && i < d) {
-						final long source = iterator.nextLong() - ++base;
-						if (skipLoops && source == target && ++i == d) return false;
+					if (edge == -1 && i-- != 0) {
+						final long source = iterator.nextLong() - base--;
+						if (skipLoops && source == target && i-- != 0) return false;
 						final long v = successors.getLong(graph.cumulativeOutdegrees.getLong(source)) + target + 1;
 						assert v == successors.successor(v) : v + " != " + successors.successor(v);
 						edge = (int)successors.successorIndex(v) - 1;
 						assert graph.getEdgeSource(edge).longValue() == source;
 						assert graph.getEdgeTarget(edge).longValue() == target;
-						i++;
 					}
 					return edge != -1;
 				}

@@ -53,14 +53,15 @@ public class SuccinctIntUndirectedGraphTest
 		d.addEdge(2, 3);
 		d.addEdge(3, 0);
 		d.addEdge(3, 3);
+		d.addEdge(3, 4);
 		d.addEdge(4, 1);
 
 		final SuccinctIntUndirectedGraph s = new SuccinctIntUndirectedGraph(d);
 		assertEquals(2, s.outDegreeOf(0));
 		assertEquals(3, s.outDegreeOf(1));
 		assertEquals(2, s.outDegreeOf(2));
-		assertEquals(4, s.outDegreeOf(3));
-		assertEquals(1, s.outDegreeOf(4));
+		assertEquals(5, s.outDegreeOf(3));
+		assertEquals(2, s.outDegreeOf(4));
 
 		assertEquals(0, s.getEdge(0, 1).intValue());
 		assertEquals(1, s.getEdge(3, 0).intValue());
@@ -68,6 +69,7 @@ public class SuccinctIntUndirectedGraphTest
 		assertEquals(3, s.getEdge(4, 1).intValue());
 		assertEquals(4, s.getEdge(2, 3).intValue());
 		assertEquals(5, s.getEdge(3, 3).intValue());
+		assertEquals(6, s.getEdge(3, 4).intValue());
 
 		assertNull(s.getEdge(0, 0));
 		assertNull(s.getEdge(0, 4));
@@ -80,7 +82,6 @@ public class SuccinctIntUndirectedGraphTest
 		assertNull(s.getEdge(4, 0));
 		assertNull(s.getEdge(4, 4));
 		assertNull(s.getEdge(4, 2));
-		assertNull(s.getEdge(4, 3));
 
 		assertTrue(s.containsEdge(0, 1));
 		assertTrue(s.containsEdge(1, 0));
@@ -91,6 +92,8 @@ public class SuccinctIntUndirectedGraphTest
 		assertTrue(s.containsEdge(3, 0));
 		assertTrue(s.containsEdge(0, 3));
 		assertTrue(s.containsEdge(3, 3));
+		assertTrue(s.containsEdge(3, 4));
+		assertTrue(s.containsEdge(4, 3));
 		assertTrue(s.containsEdge(4, 1));
 		assertTrue(s.containsEdge(1, 4));
 
@@ -105,7 +108,6 @@ public class SuccinctIntUndirectedGraphTest
 		assertFalse(s.containsEdge(4, 0));
 		assertFalse(s.containsEdge(4, 4));
 		assertFalse(s.containsEdge(4, 2));
-		assertFalse(s.containsEdge(4, 3));
 
 		assertEquals(0, s.getEdgeSource(0).intValue());
 		assertEquals(1, s.getEdgeTarget(0).intValue());
@@ -125,23 +127,26 @@ public class SuccinctIntUndirectedGraphTest
 		assertEquals(3, s.getEdgeSource(5).intValue());
 		assertEquals(3, s.getEdgeTarget(5).intValue());
 
+		assertEquals(3, s.getEdgeSource(6).intValue());
+		assertEquals(4, s.getEdgeTarget(6).intValue());
+
 		assertEquals(IntSets.fromTo(0, 2), s.edgesOf(0));
 		assertEquals(new IntOpenHashSet(new int[] { 0, 2, 3 }), s.edgesOf(1));
 		assertEquals(new IntOpenHashSet(new int[] { 2, 4 }), s.edgesOf(2));
-		assertEquals(new IntOpenHashSet(new int[] { 1, 4, 5 }), s.edgesOf(3));
-		assertEquals(IntSets.fromTo(3, 4), s.edgesOf(4));
+		assertEquals(new IntOpenHashSet(new int[] { 1, 4, 5, 6 }), s.edgesOf(3));
+		assertEquals(new IntOpenHashSet(new int[] { 3, 6 }), s.edgesOf(4));
 
 		assertEquals(IntSets.fromTo(0, 2), s.outgoingEdgesOf(0));
 		assertEquals(new IntOpenHashSet(new int[] { 0, 2, 3 }), s.outgoingEdgesOf(1));
 		assertEquals(new IntOpenHashSet(new int[] { 2, 4 }), s.outgoingEdgesOf(2));
-		assertEquals(new IntOpenHashSet(new int[] { 1, 4, 5 }), s.outgoingEdgesOf(3));
-		assertEquals(IntSets.fromTo(3, 4), s.outgoingEdgesOf(4));
+		assertEquals(new IntOpenHashSet(new int[] { 1, 4, 5, 6 }), s.outgoingEdgesOf(3));
+		assertEquals(new IntOpenHashSet(new int[] { 3, 6 }), s.outgoingEdgesOf(4));
 
 		assertEquals(IntSets.fromTo(0, 2), s.incomingEdgesOf(0));
 		assertEquals(new IntOpenHashSet(new int[] { 0, 2, 3 }), s.incomingEdgesOf(1));
 		assertEquals(new IntOpenHashSet(new int[] { 2, 4 }), s.incomingEdgesOf(2));
-		assertEquals(new IntOpenHashSet(new int[] { 1, 4, 5 }), s.incomingEdgesOf(3));
-		assertEquals(IntSets.fromTo(3, 4), s.incomingEdgesOf(4));
+		assertEquals(new IntOpenHashSet(new int[] { 1, 4, 5, 6 }), s.incomingEdgesOf(3));
+		assertEquals(new IntOpenHashSet(new int[] { 3, 6 }), s.incomingEdgesOf(4));
 
 		assertEquals(new IntOpenHashSet(new int[] {
 				0, 1 }), new IntOpenHashSet(s.iterables().incomingEdgesOf(0).iterator()));
@@ -150,27 +155,9 @@ public class SuccinctIntUndirectedGraphTest
 		assertEquals(new IntOpenHashSet(new int[] { 2,
 				4 }), new IntOpenHashSet(s.iterables().incomingEdgesOf(2).iterator()));
 		assertEquals(new IntOpenHashSet(new int[] { 1, 4,
-				5 }), new IntOpenHashSet(s.iterables().incomingEdgesOf(3).iterator()));
+				5, 6 }), new IntOpenHashSet(s.iterables().incomingEdgesOf(3).iterator()));
 		assertEquals(new IntOpenHashSet(new int[] {
-				3 }), new IntOpenHashSet(s.iterables().incomingEdgesOf(4).iterator()));
-
-		assertEquals(0, s.getEdgeSource(0).intValue());
-		assertEquals(1, s.getEdgeTarget(0).intValue());
-
-		assertEquals(0, s.getEdgeSource(1).intValue());
-		assertEquals(3, s.getEdgeTarget(1).intValue());
-
-		assertEquals(1, s.getEdgeSource(2).intValue());
-		assertEquals(2, s.getEdgeTarget(2).intValue());
-
-		assertEquals(1, s.getEdgeSource(3).intValue());
-		assertEquals(4, s.getEdgeTarget(3).intValue());
-
-		assertEquals(2, s.getEdgeSource(4).intValue());
-		assertEquals(3, s.getEdgeTarget(4).intValue());
-
-		assertEquals(3, s.getEdgeSource(5).intValue());
-		assertEquals(3, s.getEdgeTarget(5).intValue());
+				6, 3 }), new IntOpenHashSet(s.iterables().incomingEdgesOf(4).iterator()));
 	}
 
 	@Test
