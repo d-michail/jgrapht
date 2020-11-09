@@ -20,6 +20,7 @@ package org.jgrapht.opt.graph.sux4j;
 
 import java.io.Serializable;
 import java.util.Arrays;
+import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.function.Function;
@@ -29,6 +30,7 @@ import org.jgrapht.Graph;
 import org.jgrapht.GraphIterables;
 import org.jgrapht.GraphType;
 import org.jgrapht.Graphs;
+import org.jgrapht.alg.util.Pair;
 import org.jgrapht.graph.AbstractGraph;
 import org.jgrapht.graph.DefaultGraphType;
 import org.jgrapht.opt.graph.sparse.SparseIntDirectedGraph;
@@ -215,7 +217,23 @@ public class SuccinctIntDirectedGraph extends AbstractGraph<Integer, Integer> im
 		assert predecessors.getLong(predecessors.size64() - 1) == backwardUpperBound;
 	}
 
-    @Override
+	/**
+	 * Creates a new immutable succinct directed graph from an edge list.
+	 *
+	 * <p>
+	 * This constructor just builds a {@link SparseIntDirectedGraph} and delegates to the
+	 * {@linkplain #SuccinctIntDirectedGraph(Graph) main constructor}.
+	 *
+	 * @param numVertices the number of vertices.
+	 * @param edges the edge list.
+	 * @see #SuccinctIntDirectedGraph(Graph)
+	 */
+
+	public SuccinctIntDirectedGraph(final int numVertices, final List<Pair<Integer, Integer>> edges) {
+		this(new SparseIntDirectedGraph(numVertices, edges));
+    }
+
+	@Override
     public Supplier<Integer> getVertexSupplier()
     {
         return null;
