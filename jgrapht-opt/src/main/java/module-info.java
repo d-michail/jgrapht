@@ -2,7 +2,7 @@ module org.jgrapht.opt
 {
     exports org.jgrapht.opt.graph.fastutil;
     exports org.jgrapht.opt.graph.sparse;
-	exports org.jgrapht.opt.graph.webgraph;
+    exports org.jgrapht.opt.graph.sux4j;
 
     requires transitive org.jgrapht.core;
     requires transitive it.unimi.dsi.fastutil;
