@@ -270,10 +270,10 @@ public class SuccinctIntUndirectedGraph
         assert cumulativeIndegrees.getLong(cumulativeIndegrees.size64() - 1) == m;
 
         successors = new EliasFanoIndexedMonotoneLongBigList(
-            m + 1, forwardUpperBound,
+            m + 1, forwardUpperBound + n,
             new CumulativeSuccessors<>(graph, true, iterables::outgoingEdgesOf));
         predecessors = new EliasFanoIndexedMonotoneLongBigList(
-            m + 1, backwardUpperBound,
+            m + 1, backwardUpperBound + 1,
             new CumulativeSuccessors<>(graph, false, iterables::incomingEdgesOf));
         assert successors.getLong(successors.size64() - 1) == forwardUpperBound;
         assert predecessors.getLong(predecessors.size64() - 1) == backwardUpperBound;
@@ -421,14 +421,14 @@ public class SuccinctIntUndirectedGraph
     public Integer getEdgeSource(final Integer e)
     {
         assertEdgeExist(e);
-        return (int) cumulativeOutdegrees.weakPredecessorIndex(e);
+        return (int) cumulativeOutdegrees.weakPredecessorIndexUnsafe(e);
     }
 
     @Override
     public Integer getEdgeTarget(final Integer e)
     {
         assertEdgeExist(e);
-        final long cumul = cumulativeOutdegrees.weakPredecessor(e);
+        final long cumul = cumulativeOutdegrees.weakPredecessorUnsafe(e);
         return (int) (successors.getLong(e + 1) - successors.getLong(cumul) - 1);
     }
 
@@ -465,7 +465,7 @@ public class SuccinctIntUndirectedGraph
         final long[] result = new long[2];
         cumulativeOutdegrees.get(x, result);
         final long v = successors.getLong(result[0]) + y + 1;
-        final long index = successors.indexOf(v);
+        final long index = successors.indexOfUnsafe(v);
         return index != -1 && index <= result[1] ? (int) index - 1 : null;
     }
 
@@ -482,7 +482,7 @@ public class SuccinctIntUndirectedGraph
         final long[] result = new long[2];
         cumulativeOutdegrees.get(x, result);
         final long v = successors.getLong(result[0]) + y + 1;
-        final long index = successors.indexOf(v);
+        final long index = successors.indexOfUnsafe(v);
         return index != -1 && index <= result[1];
     }
 
@@ -594,7 +594,7 @@ public class SuccinctIntUndirectedGraph
                         if (source == target && i-- == 0)
                             return false;
                         edge = (int) successors
-                            .successorIndex(
+                            .successorIndexUnsafe(
                                 successors.getLong(graph.cumulativeOutdegrees.getLong(source))
                                     + target + 1)
                             - 1;
