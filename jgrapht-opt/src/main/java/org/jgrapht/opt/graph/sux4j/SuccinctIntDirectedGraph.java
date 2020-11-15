@@ -243,6 +243,8 @@ public class SuccinctIntDirectedGraph
                 backwardUpperBound += maxPred - d + 1;
         }
 
+		forwardUpperBound += n;
+
         cumulativeOutdegrees = new EliasFanoIndexedMonotoneLongBigList(
             n + 1, m, new CumulativeDegrees(n, graph::outDegreeOf));
         cumulativeIndegrees =
@@ -251,10 +253,10 @@ public class SuccinctIntDirectedGraph
         assert cumulativeIndegrees.getLong(cumulativeIndegrees.size64() - 1) == m;
 
         successors = new EliasFanoIndexedMonotoneLongBigList(
-            m + 1, forwardUpperBound,
+            m + 1, forwardUpperBound + n,
             new CumulativeSuccessors<>(graph, iterables::outgoingEdgesOf, true));
         predecessors = new EliasFanoIndexedMonotoneLongBigList(
-            m + 1, backwardUpperBound,
+            m + 1, backwardUpperBound + 1,
             new CumulativeSuccessors<>(graph, iterables::incomingEdgesOf, false));
         assert successors.getLong(successors.size64() - 1) == forwardUpperBound;
         assert predecessors.getLong(predecessors.size64() - 1) == backwardUpperBound;
@@ -369,7 +371,7 @@ public class SuccinctIntDirectedGraph
         for (int i = d; i-- != 0;) {
             final long source = iterator.nextLong() - base--;
             final int e = (int) (successors
-                .successorIndex(successors.getLong(cumulativeOutdegrees.getLong(source)) + t)) - 1;
+                .successorIndexUnsafe(successors.getLong(cumulativeOutdegrees.getLong(source)) + t)) - 1;
             assert getEdgeSource(e).longValue() == source;
             assert getEdgeTarget(e).longValue() == target;
             s.add(e);
@@ -422,14 +424,14 @@ public class SuccinctIntDirectedGraph
     public Integer getEdgeSource(final Integer e)
     {
         assertEdgeExist(e);
-        return (int) cumulativeOutdegrees.weakPredecessorIndex(e);
+        return (int) cumulativeOutdegrees.weakPredecessorIndexUnsafe(e);
     }
 
     @Override
     public Integer getEdgeTarget(final Integer e)
     {
         assertEdgeExist(e);
-        final long cumul = cumulativeOutdegrees.weakPredecessor(e);
+        final long cumul = cumulativeOutdegrees.weakPredecessorUnsafe(e);
         return (int) (successors.getLong(e + 1) - successors.getLong(cumul) - 1);
     }
 
@@ -459,7 +461,7 @@ public class SuccinctIntDirectedGraph
         final long[] result = new long[2];
         cumulativeOutdegrees.get(sourceVertex, result);
         final long v = successors.getLong(result[0]) + targetVertex + 1;
-        final long index = successors.indexOf(v);
+        final long index = successors.indexOfUnsafe(v);
         return index != -1 && index <= result[1] ? (int) index - 1 : null;
     }
 
@@ -469,7 +471,7 @@ public class SuccinctIntDirectedGraph
         final long[] result = new long[2];
         cumulativeOutdegrees.get(sourceVertex, result);
         final long v = successors.getLong(result[0]) + targetVertex + 1;
-        final long index = successors.indexOf(v);
+        final long index = successors.indexOfUnsafe(v);
         return index != -1 && index <= result[1];
     }
 
@@ -579,7 +581,7 @@ public class SuccinctIntDirectedGraph
                             successors.getLong(graph.cumulativeOutdegrees.getLong(source)) + target
                                 + 1;
                         assert v == successors.successor(v) : v + " != " + successors.successor(v);
-                        edge = (int) successors.successorIndex(v) - 1;
+                        edge = (int) successors.successorIndexUnsafe(v) - 1;
                         assert graph.getEdgeSource(edge).longValue() == source;
                         assert graph.getEdgeTarget(edge).longValue() == target;
                     }
