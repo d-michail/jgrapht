@@ -270,7 +270,7 @@ public class SuccinctIntUndirectedGraph
         assert cumulativeIndegrees.getLong(cumulativeIndegrees.size64() - 1) == m;
 
         successors = new EliasFanoIndexedMonotoneLongBigList(
-            m + 1, forwardUpperBound + n,
+            m + 1, forwardUpperBound + n + 1,
             new CumulativeSuccessors<>(graph, true, iterables::outgoingEdgesOf));
         predecessors = new EliasFanoIndexedMonotoneLongBigList(
             m + 1, backwardUpperBound + 1,
