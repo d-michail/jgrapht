@@ -430,14 +430,13 @@ public class SuccinctIntDirectedGraph
     public Integer getEdge(final Integer sourceVertex, final Integer targetVertex)
     {
         final long index = successors.indexOfUnsafe(sourceVertex * (long) n + targetVertex);
-        return index != -1 && index != m ? (int) index : null;
+        return index != -1 ? (int) index : null;
     }
 
     @Override
     public boolean containsEdge(final Integer sourceVertex, final Integer targetVertex)
     {
-        final long index = successors.indexOfUnsafe(sourceVertex * (long) n + targetVertex);
-        return index != -1 && index != m;
+        return successors.indexOfUnsafe(sourceVertex * (long) n + targetVertex) != -1;
     }
 
     @Override

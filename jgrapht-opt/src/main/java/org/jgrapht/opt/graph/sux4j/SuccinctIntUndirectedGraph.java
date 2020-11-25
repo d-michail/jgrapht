@@ -435,7 +435,7 @@ public class SuccinctIntUndirectedGraph
             y = t;
         }
         final long index = successors.indexOfUnsafe(x * (long) n + y);
-        return index != -1 && index != m ? (int) index : null;
+        return index != -1 ? (int) index : null;
     }
 
     @Override
@@ -448,8 +448,7 @@ public class SuccinctIntUndirectedGraph
             x = y;
             y = t;
         }
-        final long index = successors.indexOfUnsafe(x * (long) n + y);
-        return index != -1 && index != m;
+        return successors.indexOfUnsafe(x * (long) n + y) != -1;
     }
 
     @Override
