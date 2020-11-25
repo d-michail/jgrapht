@@ -67,9 +67,10 @@ public class SuccinctIntUndirectedGraph
     protected static final String UNMODIFIABLE = "this graph is unmodifiable";
 
     /**
-     * Turns all lists of successors into a single monotone sequence, bumping by one the value after
-     * each list (the resulting list starts with a zero). Depending on the value of {@code sorted},
-     * only edges with source less than or equal to the target (or vice versa) are included.
+     * Turns all lists of adjacent nodes into a single monotone sequence by representing the edge
+     * <var>x</var>&nbsp;&mdash;&nbsp;<var>y</var> as <var>x</var><var>n</var> + <var>y</var>.
+     * Depending on the value of {@code sorted}, only edges with source less than or equal to the
+     * target (or vice versa) are included.
      *
      * @param <E> the graph edge type
      */
@@ -78,13 +79,13 @@ public class SuccinctIntUndirectedGraph
         LongIterator
     {
         private final Graph<Integer, E> graph;
-        private final int n;
+        private final long n;
         private final Function<Integer, Iterable<E>> succ;
         private final boolean sorted;
 
-        int x = -1, d, i;
-        long next, last, cumul;
-        int[] s = IntArrays.EMPTY_ARRAY;
+        private int x = -1, d, i;
+        private long next = -1;
+        private int[] s = IntArrays.EMPTY_ARRAY;
 
         public CumulativeSuccessors(
             final Graph<Integer, E> graph, final boolean sorted,
@@ -94,7 +95,6 @@ public class SuccinctIntUndirectedGraph
             this.graph = graph;
             this.sorted = sorted;
             this.succ = succ;
-            last = sorted ? 1 : 0;
         }
 
         @Override
@@ -105,8 +105,6 @@ public class SuccinctIntUndirectedGraph
             if (x == n)
                 return false;
             while (i == d) {
-                cumul += last;
-                last = 0;
                 if (++x == n)
                     return false;
                 int d = 0;
@@ -128,8 +126,7 @@ public class SuccinctIntUndirectedGraph
                 this.d = d;
                 i = 0;
             }
-            next = cumul + s[i] - (sorted ? 0 : i);
-            last = s[i] + (sorted ? 1 : -i);
+            next = s[i] + x * n;
             i++;
             return true;
         }
@@ -235,32 +232,9 @@ public class SuccinctIntUndirectedGraph
             throw new IllegalArgumentException(
                 "The number of edges (" + iterables.edgeCount() + ") is greater than "
                     + Integer.MAX_VALUE);
+
         n = (int) iterables.vertexCount();
         m = (int) iterables.edgeCount();
-
-        long forwardUpperBound = 0, backwardUpperBound = 0;
-
-        for (int x = 0; x < n; x++) {
-            int maxSucc = -1;
-            for (final E e : iterables.outgoingEdgesOf(x)) {
-                final int y = Graphs.getOppositeVertex(graph, e, x);
-                if (y >= x)
-                    maxSucc = Math.max(maxSucc, y);
-            }
-            if (maxSucc != -1)
-                forwardUpperBound += maxSucc + 1;
-
-            int maxPred = -1, d = 0;
-            for (final E e : iterables.incomingEdgesOf(x)) {
-                final int y = Graphs.getOppositeVertex(graph, e, x);
-                if (y <= x) {
-                    maxPred = Math.max(maxPred, y);
-                    d++;
-                }
-            }
-            if (maxPred != -1)
-                backwardUpperBound += maxPred - d + 1;
-        }
 
         cumulativeOutdegrees = new EliasFanoIndexedMonotoneLongBigList(
             n + 1, m, new CumulativeDegrees<>(graph, true, iterables::edgesOf));
@@ -270,13 +244,11 @@ public class SuccinctIntUndirectedGraph
         assert cumulativeIndegrees.getLong(cumulativeIndegrees.size64() - 1) == m;
 
         successors = new EliasFanoIndexedMonotoneLongBigList(
-            m + 1, forwardUpperBound + n + 1,
+            m, (long) n * n,
             new CumulativeSuccessors<>(graph, true, iterables::outgoingEdgesOf));
         predecessors = new EliasFanoIndexedMonotoneLongBigList(
-            m + 1, backwardUpperBound + 1,
+            m, (long) n * n,
             new CumulativeSuccessors<>(graph, false, iterables::incomingEdgesOf));
-        assert successors.getLong(successors.size64() - 1) == forwardUpperBound;
-        assert predecessors.getLong(predecessors.size64() - 1) == backwardUpperBound;
     }
 
     /**
@@ -421,7 +393,7 @@ public class SuccinctIntUndirectedGraph
     public Integer getEdgeSource(final Integer e)
     {
         assertEdgeExist(e);
-        return (int) cumulativeOutdegrees.weakPredecessorIndexUnsafe(e);
+        return (int) (successors.getLong(e) / n);
     }
 
     @Override
@@ -429,7 +401,7 @@ public class SuccinctIntUndirectedGraph
     {
         assertEdgeExist(e);
         final long cumul = cumulativeOutdegrees.weakPredecessorUnsafe(e);
-        return (int) (successors.getLong(e + 1) - successors.getLong(cumul) - 1);
+        return (int) (successors.getLong(e) % n);
     }
 
     @Override
@@ -462,11 +434,8 @@ public class SuccinctIntUndirectedGraph
             x = y;
             y = t;
         }
-        final long[] result = new long[2];
-        cumulativeOutdegrees.get(x, result);
-        final long v = successors.getLong(result[0]) + y + 1;
-        final long index = successors.indexOfUnsafe(v);
-        return index != -1 && index <= result[1] ? (int) index - 1 : null;
+        final long index = successors.indexOfUnsafe(x * (long) n + y);
+        return index != -1 && index != m ? (int) index : null;
     }
 
     @Override
@@ -479,11 +448,8 @@ public class SuccinctIntUndirectedGraph
             x = y;
             y = t;
         }
-        final long[] result = new long[2];
-        cumulativeOutdegrees.get(x, result);
-        final long v = successors.getLong(result[0]) + y + 1;
-        final long index = successors.indexOfUnsafe(v);
-        return index != -1 && index <= result[1];
+        final long index = successors.indexOfUnsafe(x * (long) n + y);
+        return index != -1 && index != m;
     }
 
     @Override
@@ -583,21 +549,19 @@ public class SuccinctIntUndirectedGraph
             {
                 int i = d;
                 int edge = -1;
-                long base = iterator.nextLong();
+                long n = graph.n;
 
                 @Override
                 public boolean hasNext()
                 {
                     if (edge == -1 && i > 0) {
                         i--;
-                        final long source = iterator.nextLong() - base--;
+                        final long source = iterator.nextLong() % n;
                         if (source == target && i-- == 0)
                             return false;
-                        edge = (int) successors
-                            .successorIndexUnsafe(
-                                successors.getLong(graph.cumulativeOutdegrees.getLong(source))
-                                    + target + 1)
-                            - 1;
+                        final long v = source * n + target;
+                        assert v == successors.successor(v) : v + " != " + successors.successor(v);
+                        edge = (int) successors.successorIndexUnsafe(v);
                         assert graph.getEdgeSource(edge).longValue() == source;
                         assert graph.getEdgeTarget(edge).longValue() == target;
                     }

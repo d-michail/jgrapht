@@ -54,7 +54,8 @@ import it.unimi.dsi.sux4j.util.EliasFanoMonotoneLongBigList;
  * The graph representation of this implementation is similar to that of
  * {@link SparseIntDirectedGraph}: nodes and edges are initial intervals of the natural numbers.
  * Under the hood, however, this class uses the {@linkplain EliasFanoMonotoneLongBigList
- * Elias&ndash;Fano representation of monotone sequences}.
+ * Elias&ndash;Fano representation of monotone sequences} to represent the positions of the ones
+ * elements in the (linearized) adjacency matrix of the graph.
  *
  * <p>
  * If the vertex set is compact (i.e., vertices are numbered from 0 consecutively), space usage will
@@ -85,8 +86,8 @@ public class SuccinctIntDirectedGraph
     protected static final String UNMODIFIABLE = "this graph is unmodifiable";
 
     /**
-     * Turns all lists of successors into a single monotone sequence, bumping by one the value after
-     * each list (the resulting list starts with a zero).
+     * Turns all lists of successors into a single monotone sequence by representing an arc
+     * <var>x</var>&nbsp;&rarr;&nbsp;<var>y</var> as <var>x</var><var>n</var> + <var>y</var>.
      *
      * @param <E> the graph edge type
      */
@@ -95,23 +96,19 @@ public class SuccinctIntDirectedGraph
         LongIterator
     {
         private final Graph<Integer, E> graph;
-        private final int n;
+        private final long n;
         private final Function<Integer, Iterable<E>> succ;
-        private final boolean strict;
 
-        int x = -1, d, i;
-        long next, last, cumul;
-        int[] s = IntArrays.EMPTY_ARRAY;
+        private int x = -1, d, i;
+        private long next = -1;
+        private int[] s = IntArrays.EMPTY_ARRAY;
 
         public CumulativeSuccessors(
-            final Graph<Integer, E> graph, final Function<Integer, Iterable<E>> succ,
-            final boolean strict)
+            final Graph<Integer, E> graph, final Function<Integer, Iterable<E>> succ)
         {
-            this.strict = strict;
-            this.n = (int) graph.iterables().vertexCount();
+            this.n = graph.iterables().vertexCount();
             this.graph = graph;
             this.succ = succ;
-            last = strict ? 1 : 0;
         }
 
         @Override
@@ -122,8 +119,6 @@ public class SuccinctIntDirectedGraph
             if (x == n)
                 return false;
             while (i == d) {
-                cumul += last;
-                last = 0;
                 if (++x == n)
                     return false;
                 int d = 0;
@@ -135,8 +130,7 @@ public class SuccinctIntDirectedGraph
                 this.d = d;
                 i = 0;
             }
-            next = cumul + s[i] - (strict ? 0 : i);
-            last = s[i] + (strict ? 1 : -i);
+            next = s[i] + x * n;
             i++;
             return true;
         }
@@ -222,26 +216,9 @@ public class SuccinctIntDirectedGraph
             throw new IllegalArgumentException(
                 "The number of edges (" + iterables.edgeCount() + ") is greater than "
                     + Integer.MAX_VALUE);
+
         n = (int) iterables.vertexCount();
         m = (int) iterables.edgeCount();
-
-        long forwardUpperBound = 0, backwardUpperBound = 0;
-
-        for (int x = 0; x < n; x++) {
-            int maxSucc = -1;
-            for (final E e : iterables.outgoingEdgesOf(x))
-                maxSucc = Math.max(maxSucc, Graphs.getOppositeVertex(graph, e, x));
-            if (maxSucc != -1)
-                forwardUpperBound += maxSucc + 1;
-
-            int maxPred = -1, d = 0;
-            for (final E e : iterables.incomingEdgesOf(x)) {
-                maxPred = Math.max(maxPred, Graphs.getOppositeVertex(graph, e, x));
-                d++;
-            }
-            if (maxPred != -1)
-                backwardUpperBound += maxPred - d + 1;
-        }
 
         cumulativeOutdegrees = new EliasFanoIndexedMonotoneLongBigList(
             n + 1, m, new CumulativeDegrees(n, graph::outDegreeOf));
@@ -251,13 +228,11 @@ public class SuccinctIntDirectedGraph
         assert cumulativeIndegrees.getLong(cumulativeIndegrees.size64() - 1) == m;
 
         successors = new EliasFanoIndexedMonotoneLongBigList(
-            m + 1, forwardUpperBound + n + 1,
-            new CumulativeSuccessors<>(graph, iterables::outgoingEdgesOf, true));
+            m, (long) n * n,
+            new CumulativeSuccessors<>(graph, iterables::outgoingEdgesOf));
         predecessors = new EliasFanoIndexedMonotoneLongBigList(
-            m + 1, backwardUpperBound + 1,
-            new CumulativeSuccessors<>(graph, iterables::incomingEdgesOf, false));
-        assert successors.getLong(successors.size64() - 1) == forwardUpperBound;
-        assert predecessors.getLong(predecessors.size64() - 1) == backwardUpperBound;
+            m, (long) n * n,
+            new CumulativeSuccessors<>(graph, iterables::incomingEdgesOf));
     }
 
     /**
@@ -356,20 +331,19 @@ public class SuccinctIntDirectedGraph
     public IntSet incomingEdgesOf(final Integer target)
     {
         assertVertexExist(target);
-        int t = target;
+        final int t = target;
         final long[] result = new long[2];
         cumulativeIndegrees.get(t, result);
         final int d = (int) (result[1] - result[0]);
         final LongBigListIterator iterator = predecessors.listIterator(result[0]);
 
         final IntOpenHashSet s = new IntOpenHashSet();
-        long base = iterator.nextLong();
+        final long base = (long) n * t;
 
-        t++;
         for (int i = d; i-- != 0;) {
-            final long source = iterator.nextLong() - base--;
+            final long source = iterator.nextLong() - base;
             final int e = (int) (successors
-                .successorIndexUnsafe(successors.getLong(cumulativeOutdegrees.getLong(source)) + t)) - 1;
+                .successorIndexUnsafe(source * n + t));
             assert getEdgeSource(e).longValue() == source;
             assert getEdgeTarget(e).longValue() == target;
             s.add(e);
@@ -422,15 +396,14 @@ public class SuccinctIntDirectedGraph
     public Integer getEdgeSource(final Integer e)
     {
         assertEdgeExist(e);
-        return (int) cumulativeOutdegrees.weakPredecessorIndexUnsafe(e);
+        return (int) (successors.getLong(e) / n);
     }
 
     @Override
     public Integer getEdgeTarget(final Integer e)
     {
         assertEdgeExist(e);
-        final long cumul = cumulativeOutdegrees.weakPredecessorUnsafe(e);
-        return (int) (successors.getLong(e + 1) - successors.getLong(cumul) - 1);
+        return (int) (successors.getLong(e) % n);
     }
 
     @Override
@@ -456,21 +429,15 @@ public class SuccinctIntDirectedGraph
     @Override
     public Integer getEdge(final Integer sourceVertex, final Integer targetVertex)
     {
-        final long[] result = new long[2];
-        cumulativeOutdegrees.get(sourceVertex, result);
-        final long v = successors.getLong(result[0]) + targetVertex + 1;
-        final long index = successors.indexOfUnsafe(v);
-        return index != -1 && index <= result[1] ? (int) index - 1 : null;
+        final long index = successors.indexOfUnsafe(sourceVertex * (long) n + targetVertex);
+        return index != -1 && index != m ? (int) index : null;
     }
 
     @Override
     public boolean containsEdge(final Integer sourceVertex, final Integer targetVertex)
     {
-        final long[] result = new long[2];
-        cumulativeOutdegrees.get(sourceVertex, result);
-        final long v = successors.getLong(result[0]) + targetVertex + 1;
-        final long index = successors.indexOfUnsafe(v);
-        return index != -1 && index <= result[1];
+        final long index = successors.indexOfUnsafe(sourceVertex * (long) n + targetVertex);
+        return index != -1 && index != m;
     }
 
     @Override
@@ -565,21 +532,19 @@ public class SuccinctIntDirectedGraph
             {
                 int i = d;
                 int edge = -1;
-                long base = iterator.nextLong();
+                long n = graph.n;
 
                 @Override
                 public boolean hasNext()
                 {
                     if (edge == -1 && i > 0) {
                         i--;
-                        final long source = iterator.nextLong() - base--;
+                        final long source = iterator.nextLong() % n;
                         if (skipLoops && source == target && i-- != 0)
                             return false;
-                        final long v =
-                            successors.getLong(graph.cumulativeOutdegrees.getLong(source)) + target
-                                + 1;
+                        final long v = source * n + target;
                         assert v == successors.successor(v) : v + " != " + successors.successor(v);
-                        edge = (int) successors.successorIndexUnsafe(v) - 1;
+                        edge = (int) successors.successorIndexUnsafe(v);
                         assert graph.getEdgeSource(edge).longValue() == source;
                         assert graph.getEdgeTarget(edge).longValue() == target;
                     }
