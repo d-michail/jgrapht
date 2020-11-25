@@ -83,7 +83,7 @@ public class SuccinctIntUndirectedGraph
         private final Function<Integer, Iterable<E>> succ;
         private final boolean sorted;
 
-        private int x = -1, d, i;
+        private int x = -1, d, i, e;
         private long next = -1;
         private int[] s = IntArrays.EMPTY_ARRAY;
 
@@ -126,7 +126,9 @@ public class SuccinctIntUndirectedGraph
                 this.d = d;
                 i = 0;
             }
-            next = s[i] + x * n;
+            // The predecessor list will not be indexed, so we can gain a few bits of space by
+            // subtracting the edge position in the list
+            next = s[i] + x * n - (sorted ? 0 : e++);
             i++;
             return true;
         }
@@ -244,10 +246,9 @@ public class SuccinctIntUndirectedGraph
         assert cumulativeIndegrees.getLong(cumulativeIndegrees.size64() - 1) == m;
 
         successors = new EliasFanoIndexedMonotoneLongBigList(
-            m, (long) n * n,
-            new CumulativeSuccessors<>(graph, true, iterables::outgoingEdgesOf));
+            m, (long) n * n, new CumulativeSuccessors<>(graph, true, iterables::outgoingEdgesOf));
         predecessors = new EliasFanoIndexedMonotoneLongBigList(
-            m, (long) n * n,
+            m, (long) n * n - m,
             new CumulativeSuccessors<>(graph, false, iterables::incomingEdgesOf));
     }
 
@@ -549,13 +550,14 @@ public class SuccinctIntUndirectedGraph
                 int i = d;
                 int edge = -1;
                 long n = graph.n;
+                long base = n * target - result[0];
 
                 @Override
                 public boolean hasNext()
                 {
                     if (edge == -1 && i > 0) {
                         i--;
-                        final long source = iterator.nextLong() % n;
+                        final long source = iterator.nextLong() - base--;
                         if (source == target && i-- == 0)
                             return false;
                         final long v = source * n + target;
