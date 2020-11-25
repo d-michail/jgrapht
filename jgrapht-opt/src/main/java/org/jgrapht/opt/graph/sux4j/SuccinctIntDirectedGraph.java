@@ -98,17 +98,20 @@ public class SuccinctIntDirectedGraph
         private final Graph<Integer, E> graph;
         private final long n;
         private final Function<Integer, Iterable<E>> succ;
+        private final boolean strict;
 
-        private int x = -1, d, i;
+        private int x = -1, d, i, e;
         private long next = -1;
         private int[] s = IntArrays.EMPTY_ARRAY;
 
         public CumulativeSuccessors(
-            final Graph<Integer, E> graph, final Function<Integer, Iterable<E>> succ)
+            final Graph<Integer, E> graph, final Function<Integer, Iterable<E>> succ,
+            final boolean strict)
         {
             this.n = graph.iterables().vertexCount();
             this.graph = graph;
             this.succ = succ;
+            this.strict = strict;
         }
 
         @Override
@@ -130,7 +133,9 @@ public class SuccinctIntDirectedGraph
                 this.d = d;
                 i = 0;
             }
-            next = s[i] + x * n;
+            // The predecessor list will not be indexed, so we can gain a few bits of space by
+            // subtracting the edge position in the list
+            next = s[i] + x * n - (strict ? 0 : e++);
             i++;
             return true;
         }
@@ -228,11 +233,10 @@ public class SuccinctIntDirectedGraph
         assert cumulativeIndegrees.getLong(cumulativeIndegrees.size64() - 1) == m;
 
         successors = new EliasFanoIndexedMonotoneLongBigList(
-            m, (long) n * n,
-            new CumulativeSuccessors<>(graph, iterables::outgoingEdgesOf));
+            m, (long) n * n, new CumulativeSuccessors<>(graph, iterables::outgoingEdgesOf, true));
         predecessors = new EliasFanoIndexedMonotoneLongBigList(
-            m, (long) n * n,
-            new CumulativeSuccessors<>(graph, iterables::incomingEdgesOf));
+            m, (long) n * n - m,
+            new CumulativeSuccessors<>(graph, iterables::incomingEdgesOf, false));
     }
 
     /**
@@ -338,12 +342,11 @@ public class SuccinctIntDirectedGraph
         final LongBigListIterator iterator = predecessors.listIterator(result[0]);
 
         final IntOpenHashSet s = new IntOpenHashSet();
-        final long base = (long) n * t;
+        long base = (long) n * t - result[0];
 
         for (int i = d; i-- != 0;) {
-            final long source = iterator.nextLong() - base;
-            final int e = (int) (successors
-                .successorIndexUnsafe(source * n + t));
+            final long source = iterator.nextLong() - base--;
+            final int e = (int) (successors.successorIndexUnsafe(source * n + t));
             assert getEdgeSource(e).longValue() == source;
             assert getEdgeTarget(e).longValue() == target;
             s.add(e);
@@ -532,13 +535,14 @@ public class SuccinctIntDirectedGraph
                 int i = d;
                 int edge = -1;
                 long n = graph.n;
+                long base = target * n - result[0];
 
                 @Override
                 public boolean hasNext()
                 {
                     if (edge == -1 && i > 0) {
                         i--;
-                        final long source = iterator.nextLong() % n;
+                        final long source = iterator.nextLong() - base--;
                         if (skipLoops && source == target && i-- != 0)
                             return false;
                         final long v = source * n + target;
