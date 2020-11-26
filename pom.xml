@@ -91,6 +91,11 @@
             </dependency>
             <dependency>
                 <groupId>${project.groupId}</groupId>
+                <artifactId>jgrapht-webgraph</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>${project.groupId}</groupId>
                 <artifactId>jgrapht-opt</artifactId>
                 <version>${project.version}</version>
             </dependency>
@@ -312,6 +317,7 @@
         <module>jgrapht-opt</module>
         <module>jgrapht-ext</module>
         <module>jgrapht-guava</module>
+        <module>jgrapht-webgraph</module>
         <module>jgrapht-demo</module>
         <module>jgrapht-dist</module>
     </modules>
