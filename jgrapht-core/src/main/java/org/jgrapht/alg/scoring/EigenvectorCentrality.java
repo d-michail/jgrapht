@@ -66,53 +66,51 @@ public final class EigenvectorCentrality<V, E>
     public static final int MAX_ITERATIONS_DEFAULT = 100;
 
     /**
-	 * Default value for the tolerance. The calculation will stop if the &#x2113;<sub>2</sub> norm of
-	 * the difference of centrality values between iterations changes less than this value.
-	 */
+     * Default value for the tolerance. The calculation will stop if the &#x2113;<sub>2</sub> norm
+     * of the difference of centrality values between iterations changes less than this value.
+     */
     public static final double TOLERANCE_DEFAULT = 0.0001;
 
     private final Graph<V, E> g;
     private Map<V, Double> scores;
 
     /**
-	 * Create and execute an instance of EigenvectorCentrality
-	 *
-	 * @param g the input graph
-	 */
+     * Create and execute an instance of EigenvectorCentrality
+     *
+     * @param g the input graph
+     */
     public EigenvectorCentrality(final Graph<V, E> g)
     {
-        this(
-				g, MAX_ITERATIONS_DEFAULT, TOLERANCE_DEFAULT);
+        this(g, MAX_ITERATIONS_DEFAULT, TOLERANCE_DEFAULT);
     }
 
     /**
-	 * Create and execute an instance of EigenvectorCentrality
-	 *
-	 * @param g the input graph
-	 * @param maxIterations the maximum number of iterations to perform
-	 */
-    public EigenvectorCentrality(
-			final Graph<V, E> g, final int maxIterations)
+     * Create and execute an instance of EigenvectorCentrality
+     *
+     * @param g the input graph
+     * @param maxIterations the maximum number of iterations to perform
+     */
+    public EigenvectorCentrality(final Graph<V, E> g, final int maxIterations)
     {
-		this(g, maxIterations, TOLERANCE_DEFAULT);
+        this(g, maxIterations, TOLERANCE_DEFAULT);
     }
 
     /**
-	 * Create and execute an instance of EigenvectorCentrality.
-	 *
-	 * @param g the input graph
-	 * @param maxIterations the maximum number of iterations to perform
-	 * @param tolerance calculation will stop if the &#x2113;<sub>2</sub> norm of the difference of
-	 *            centrality values between iterations changes less than this value
-	 */
+     * Create and execute an instance of EigenvectorCentrality.
+     *
+     * @param g the input graph
+     * @param maxIterations the maximum number of iterations to perform
+     * @param tolerance calculation will stop if the &#x2113;<sub>2</sub> norm of the difference of
+     *        centrality values between iterations changes less than this value
+     */
     public EigenvectorCentrality(
-			final Graph<V, E> g, final int maxIterations, final double tolerance)
+        final Graph<V, E> g, final int maxIterations, final double tolerance)
     {
         this.g = g;
         this.scores = new HashMap<>();
 
-		validate(maxIterations, tolerance);
-		run(maxIterations, tolerance);
+        validate(maxIterations, tolerance);
+        run(maxIterations, tolerance);
     }
 
     /**
@@ -137,7 +135,7 @@ public final class EigenvectorCentrality<V, E>
     }
 
     /* Checks for the valid values of the parameters */
-	private void validate(final int maxIterations, final double tolerance)
+    private void validate(final int maxIterations, final double tolerance)
     {
         if (maxIterations <= 0) {
             throw new IllegalArgumentException("Maximum iterations must be positive");
@@ -148,55 +146,53 @@ public final class EigenvectorCentrality<V, E>
         }
     }
 
-    private void run(
-			int maxIterations,
-        final double tolerance)
+    private void run(int maxIterations, final double tolerance)
     {
         // initialization
         final int totalVertices = g.vertexSet().size();
         final GraphIterables<V, E> iterables = g.iterables();
 
-		final double initScore = Math.sqrt(1.0d / totalVertices);
+        final double initScore = Math.sqrt(1.0d / totalVertices);
         for (final V v : iterables.vertices()) {
             scores.put(v, initScore);
         }
 
-		// run the power method
+        // run the power method
         Map<V, Double> nextScores = new HashMap<>();
-		double l2Norm = tolerance;
+        double l2Norm = tolerance;
 
-		while (maxIterations > 0 && l2Norm >= tolerance) {
+        while (maxIterations > 0 && l2Norm >= tolerance) {
             // compute next iteration scores
-			double sumOfSquares = 0d;
-			for (final V v : iterables.vertices()) {
-				double vNewValue = 0d;
+            double sumOfSquares = 0d;
+            for (final V v : iterables.vertices()) {
+                double vNewValue = 0d;
 
                 for (final E e : iterables.incomingEdgesOf(v)) {
                     final V w = Graphs.getOppositeVertex(g, e, v);
-					vNewValue += scores.get(w) * g.getEdgeWeight(e);
+                    vNewValue += scores.get(w) * g.getEdgeWeight(e);
                 }
 
-				sumOfSquares += vNewValue * vNewValue;
+                sumOfSquares += vNewValue * vNewValue;
                 nextScores.put(v, vNewValue);
             }
 
-			final double l2NormFactor = 1 / Math.sqrt(sumOfSquares);
+            final double l2NormFactor = 1 / Math.sqrt(sumOfSquares);
 
-			double sumOfDiffs2 = 0;
-			// Normalize and evaluate norm
-			for (final V v : iterables.vertices()) {
-				final double score = nextScores.get(v) * l2NormFactor;
-				nextScores.put(v, score);
-				final double d = scores.get(v) - score;
-				sumOfDiffs2 += d * d;
-			}
+            double sumOfDiffs2 = 0;
+            // Normalize and evaluate norm
+            for (final V v : iterables.vertices()) {
+                final double score = nextScores.get(v) * l2NormFactor;
+                nextScores.put(v, score);
+                final double d = scores.get(v) - score;
+                sumOfDiffs2 += d * d;
+            }
 
             // swap scores
             final Map<V, Double> tmp = scores;
             scores = nextScores;
             nextScores = tmp;
 
-			l2Norm = Math.sqrt(sumOfDiffs2);
+            l2Norm = Math.sqrt(sumOfDiffs2);
 
             // progress
             maxIterations--;
